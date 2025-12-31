@@ -17,6 +17,7 @@ class StatsPopoverViewController: NSViewController {
     private var chartStyleControl: NSSegmentedControl!
     private var chartView: StatsChartView!
     private var historySummaryLabel: NSTextField!
+    private var updateTimer: Timer?
     
     // 统计项视图
     private var keyPressView: StatItemView!
@@ -43,28 +44,26 @@ class StatsPopoverViewController: NSViewController {
         super.viewDidLoad()
         setupUI()
         updateStats()
-        
-        // 监听统计更新通知
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(statsDidUpdate),
-            name: .statsDidUpdate,
-            object: nil
-        )
     }
 
     override func viewWillAppear() {
         super.viewWillAppear()
-        updatePermissionButtonVisibility()
+        updateStats()
+        startUpdateTimer()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
         focusPrimaryControl()
     }
+
+    override func viewWillDisappear() {
+        super.viewWillDisappear()
+        stopUpdateTimer()
+    }
     
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        stopUpdateTimer()
     }
     
     // MARK: - UI 设置
@@ -326,12 +325,6 @@ class StatsPopoverViewController: NSViewController {
     
     // MARK: - 更新统计数据
     
-    @objc private func statsDidUpdate() {
-        DispatchQueue.main.async { [weak self] in
-            self?.updateStats()
-        }
-    }
-    
     private func updateStats() {
         let stats = StatsManager.shared.currentStats
         
@@ -343,6 +336,18 @@ class StatsPopoverViewController: NSViewController {
         updateKeyBreakdown()
         updateHistorySection()
         updatePermissionButtonVisibility()
+    }
+
+    private func startUpdateTimer() {
+        updateTimer?.invalidate()
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.updateStats()
+        }
+    }
+
+    private func stopUpdateTimer() {
+        updateTimer?.invalidate()
+        updateTimer = nil
     }
     
     private func formatNumber(_ number: Int) -> String {

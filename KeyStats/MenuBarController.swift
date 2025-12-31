@@ -7,26 +7,18 @@ class MenuBarController {
     private var statusView: MenuBarStatusView?
     private var popover: NSPopover!
     private var eventMonitor: Any?
-    private var updateTimer: Timer?
     
     init() {
         setupStatusItem()
         setupPopover()
         setupEventMonitor()
-        startUpdateTimer()
-        
-        // 监听统计更新
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateMenuBarText),
-            name: .statsDidUpdate,
-            object: nil
-        )
+        StatsManager.shared.menuBarUpdateHandler = { [weak self] in
+            self?.updateMenuBarText()
+        }
     }
     
     deinit {
-        NotificationCenter.default.removeObserver(self)
-        updateTimer?.invalidate()
+        StatsManager.shared.menuBarUpdateHandler = nil
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
         }
@@ -66,15 +58,6 @@ class MenuBarController {
         }
     }
     
-    // MARK: - 定时更新菜单栏文本
-    
-    private func startUpdateTimer() {
-        // 每秒更新一次菜单栏显示（主要是为了节流，避免每次事件都更新）
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateMenuBarText()
-        }
-    }
-    
     // MARK: - 操作
     
     @objc private func togglePopover() {
@@ -103,8 +86,12 @@ class MenuBarController {
     }
     
     @objc private func updateMenuBarText() {
-        DispatchQueue.main.async { [weak self] in
-            self?.updateMenuBarAppearance()
+        if Thread.isMainThread {
+            updateMenuBarAppearance()
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.updateMenuBarAppearance()
+            }
         }
     }
 

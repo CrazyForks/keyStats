@@ -65,12 +65,16 @@ class StatsManager {
     private let historyKey = "dailyStatsHistory"
     private let dateFormatter: DateFormatter
     private var history: [String: DailyStats] = [:]
+    private var saveTimer: Timer?
+    private let saveInterval: TimeInterval = 2.0
+    private var isReadyForUpdates = false
+    var menuBarUpdateHandler: (() -> Void)?
     
     /// 当前统计数据
     private(set) var currentStats: DailyStats {
         didSet {
-            saveStats()
-            NotificationCenter.default.post(name: .statsDidUpdate, object: nil)
+            guard isReadyForUpdates else { return }
+            scheduleSave()
         }
     }
     
@@ -92,6 +96,7 @@ class StatsManager {
             }
         }
         
+        isReadyForUpdates = true
         saveStats()
         
         setupMidnightReset()
@@ -105,16 +110,19 @@ class StatsManager {
         if let keyName = keyName, !keyName.isEmpty {
             currentStats.keyPressCounts[keyName, default: 0] += 1
         }
+        notifyMenuBarUpdate()
     }
     
     func incrementLeftClicks() {
         ensureCurrentDay()
         currentStats.leftClicks += 1
+        notifyMenuBarUpdate()
     }
     
     func incrementRightClicks() {
         ensureCurrentDay()
         currentStats.rightClicks += 1
+        notifyMenuBarUpdate()
     }
     
     func addMouseDistance(_ distance: Double) {
@@ -167,6 +175,27 @@ class StatsManager {
             userDefaults.set(encoded, forKey: historyKey)
         }
     }
+
+    private func scheduleSave() {
+        guard saveTimer == nil else { return }
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveInterval, repeats: false) { [weak self] _ in
+            self?.saveTimer = nil
+            self?.saveStats()
+        }
+    }
+
+    private func notifyMenuBarUpdate() {
+        guard menuBarUpdateHandler != nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.menuBarUpdateHandler?()
+        }
+    }
+
+    func flushPendingSave() {
+        saveTimer?.invalidate()
+        saveTimer = nil
+        saveStats()
+    }
     
     // MARK: - 午夜重置
     
@@ -189,6 +218,7 @@ class StatsManager {
     
     func resetStats() {
         currentStats = DailyStats()
+        notifyMenuBarUpdate()
     }
 
     private func ensureCurrentDay() {
@@ -341,9 +371,4 @@ extension StatsManager {
             return String(format: "%.0f px", distance)
         }
     }
-}
-
-// MARK: - 通知名称扩展
-extension Notification.Name {
-    static let statsDidUpdate = Notification.Name("statsDidUpdate")
 }

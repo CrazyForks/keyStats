@@ -9,6 +9,8 @@ class InputMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var isMonitoring = false
+    private let mouseSampleInterval: TimeInterval = 1.0 / 30.0
+    private var lastMouseSampleTime: TimeInterval = 0
     
     private init() {}
     
@@ -50,7 +52,7 @@ class InputMonitor {
         // 创建事件回调
         let callback: CGEventTapCallBack = { (proxy, type, event, refcon) -> Unmanaged<CGEvent>? in
             InputMonitor.shared.handleEvent(type: type, event: event)
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
         
         // 创建事件监听器
@@ -204,6 +206,8 @@ class InputMonitor {
     ]
     
     private func handleMouseMove(event: CGEvent) {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastMouseSampleTime >= mouseSampleInterval else { return }
         let currentPosition = event.location
         let statsManager = StatsManager.shared
         
@@ -220,6 +224,7 @@ class InputMonitor {
         }
         
         statsManager.lastMousePosition = currentPosition
+        lastMouseSampleTime = now
     }
     
     private func handleScroll(event: CGEvent) {

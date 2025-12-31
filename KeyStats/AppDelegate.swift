@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 停止输入监听
         InputMonitor.shared.stopMonitoring()
         permissionCheckTimer?.invalidate()
+        StatsManager.shared.flushPendingSave()
     }
     
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
