@@ -66,24 +66,6 @@ image.lockFocus()
 NSColor.clear.set()
 NSRect(origin: .zero, size: size).fill()
 
-let strokeColor = NSColor(calibratedWhite: 0.1, alpha: 0.9)
-strokeColor.set()
-
-let line = NSBezierPath()
-line.lineWidth = 8
-line.lineCapStyle = .round
-line.lineJoinStyle = .round
-line.move(to: NSPoint(x: 230, y: 130))
-line.line(to: NSPoint(x: 460, y: 130))
-line.stroke()
-
-let head = NSBezierPath()
-head.move(to: NSPoint(x: 460, y: 130))
-head.line(to: NSPoint(x: 430, y: 152))
-head.line(to: NSPoint(x: 430, y: 108))
-head.close()
-head.fill()
-
 image.unlockFocus()
 
 guard let tiff = image.tiffRepresentation,
@@ -103,7 +85,7 @@ mkdir -p "$MOUNT_DIR"
 hdiutil attach "$TMP_DMG" -nobrowse -readwrite -mountpoint "$MOUNT_DIR"
 
 BACKGROUND_PATH="$MOUNT_DIR/background.png" MOUNT_DIR="$MOUNT_DIR" osascript <<EOF
-set backgroundAlias to POSIX file "$BACKGROUND_PATH" as alias
+set backgroundFile to POSIX file "$BACKGROUND_PATH"
 set mountAlias to POSIX file "$MOUNT_DIR" as alias
 tell application "Finder"
     set dmgDisk to disk of mountAlias
@@ -115,8 +97,8 @@ tell application "Finder"
         set the bounds of container window to {100, 100, 820, 360}
         set iconViewOptions to the icon view options of container window
         set arrangement of iconViewOptions to not arranged
-        set icon size of iconViewOptions to 96
-        set background picture of iconViewOptions to backgroundAlias
+        set icon size of iconViewOptions to 128
+        set background picture of iconViewOptions to backgroundFile
         delay 0.5
         try
             set position of item "$APP_NAME.app" of container window to {170, 170}
