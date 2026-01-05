@@ -5,6 +5,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private var menuBarController: MenuBarController?
     private var permissionCheckTimer: Timer?
+    private var permissionCheckCount = 0
+    private let maxPermissionChecks = 150 // 5分钟后停止（2秒间隔 × 150次）
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // 初始化菜单栏控制器
@@ -36,12 +38,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // 请求权限并显示提示
             showPermissionAlert()
             
-            // 定期检查权限状态
+            // 定期检查权限状态（最多5分钟）
+            permissionCheckCount = 0
             permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] timer in
+                guard let self = self else {
+                    timer.invalidate()
+                    return
+                }
+
+                self.permissionCheckCount += 1
+
+                // 检查是否获得权限
                 if InputMonitor.shared.hasAccessibilityPermission() {
                     timer.invalidate()
-                    self?.permissionCheckTimer = nil
+                    self.permissionCheckTimer = nil
                     InputMonitor.shared.startMonitoring()
+                    print("权限已授予，开始监听")
+                    return
+                }
+
+                // 检查是否超时（5分钟）
+                if self.permissionCheckCount >= self.maxPermissionChecks {
+                    timer.invalidate()
+                    self.permissionCheckTimer = nil
+                    print("权限检查超时（5分钟），请手动在系统设置中授予辅助功能权限后重启应用")
                 }
             }
         }
