@@ -315,7 +315,10 @@ class StatsPopoverViewController: NSViewController {
     private func makeVerticalSeparator() -> NSView {
         let view = NSView()
         view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.15).cgColor
+        // 在 Dark Mode 下使用更高的透明度以提高可见性
+        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let alpha: CGFloat = isDarkMode ? 0.35 : 0.15
+        view.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(alpha).cgColor
         view.translatesAutoresizingMaskIntoConstraints = false
         view.widthAnchor.constraint(equalToConstant: 1).isActive = true
         return view
@@ -684,9 +687,12 @@ class KeyCountRowView: NSView {
                     width: symbolRectSize.width,
                     height: symbolRectSize.height
                 )
-                symbol.isTemplate = true
-                NSColor.labelColor.set()
-                symbol.draw(in: symbolRect)
+                // 使用正确的方式绘制带颜色的 SF Symbol
+                if let tintedSymbol = tintImage(symbol, with: NSColor.labelColor) {
+                    tintedSymbol.draw(in: symbolRect)
+                } else {
+                    symbol.draw(in: symbolRect)
+                }
             }
         }
 
@@ -721,9 +727,15 @@ class KeyCountRowView: NSView {
         let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
         path.lineJoinStyle = .round
         path.lineCapStyle = .round
-        NSColor.controlBackgroundColor.withAlphaComponent(0.35).setFill()
+
+        // 使用动态透明度以支持 Dark Mode
+        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let fillAlpha: CGFloat = isDarkMode ? 0.6 : 0.35
+        let strokeAlpha: CGFloat = isDarkMode ? 0.7 : 0.35
+
+        NSColor.controlBackgroundColor.withAlphaComponent(fillAlpha).setFill()
         path.fill()
-        NSColor.separatorColor.withAlphaComponent(0.35).setStroke()
+        NSColor.separatorColor.withAlphaComponent(strokeAlpha).setStroke()
         path.lineWidth = lineWidth
         path.stroke()
 
@@ -745,6 +757,32 @@ class KeyCountRowView: NSView {
             return parts.isEmpty ? [key] : parts
         }
         return key.split(separator: "+").map { String($0) }
+    }
+
+    private func tintImage(_ image: NSImage, with color: NSColor) -> NSImage? {
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return nil
+        }
+
+        let tinted = NSImage(size: image.size)
+        tinted.lockFocus()
+
+        guard let context = NSGraphicsContext.current?.cgContext else {
+            tinted.unlockFocus()
+            return nil
+        }
+
+        let imageRect = NSRect(origin: .zero, size: image.size)
+
+        // 使用图像作为遮罩，然后填充颜色
+        context.saveGState()
+        context.clip(to: imageRect, mask: cgImage)
+        color.setFill()
+        imageRect.fill()
+        context.restoreGState()
+
+        tinted.unlockFocus()
+        return tinted
     }
 }
 
@@ -818,13 +856,20 @@ class StatsChartView: NSView {
     
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        
+
         let backgroundRect = bounds.insetBy(dx: 6, dy: 6)
         let plotRect = plotRect(in: backgroundRect)
-        let gridColor = NSColor.separatorColor.withAlphaComponent(0.35)
-        let axisColor = NSColor.separatorColor.withAlphaComponent(0.6)
-        
-        NSColor.controlBackgroundColor.withAlphaComponent(0.15).setFill()
+
+        // 在 Dark Mode 下使用更高的透明度以提高可见性
+        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let gridAlpha: CGFloat = isDarkMode ? 0.5 : 0.35
+        let axisAlpha: CGFloat = isDarkMode ? 0.75 : 0.6
+        let backgroundAlpha: CGFloat = isDarkMode ? 0.25 : 0.15
+
+        let gridColor = NSColor.separatorColor.withAlphaComponent(gridAlpha)
+        let axisColor = NSColor.separatorColor.withAlphaComponent(axisAlpha)
+
+        NSColor.controlBackgroundColor.withAlphaComponent(backgroundAlpha).setFill()
         NSBezierPath(roundedRect: backgroundRect, xRadius: 6, yRadius: 6).fill()
         
         guard let maxValue = series.map({ $0.value }).max(), maxValue > 0 else {
