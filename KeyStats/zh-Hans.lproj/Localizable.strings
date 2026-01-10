@@ -4,6 +4,9 @@
 "permission.later" = "稍后";
 "button.permission" = "获取权限";
 "button.launchAtLogin" = "开机启动";
+"settings.title" = "设置";
+"settings.windowTitle" = "KeyStats设置";
+"button.back" = "返回";
 "setting.showKeyPresses" = "在菜单栏显示按键数";
 "setting.showMouseClicks" = "在菜单栏显示点击数";
 "button.ok" = "确定";

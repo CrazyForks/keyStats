@@ -159,6 +159,9 @@ class MenuBarStatusView: NSView {
     private let bottomLabel = NSTextField(labelWithString: "0")
     private let stack = NSStackView()
     private let textStack = NSStackView()
+    private var stackLeadingConstraint: NSLayoutConstraint!
+    private var stackTrailingConstraint: NSLayoutConstraint!
+    private var horizontalPadding: CGFloat = 6
     
     var onClick: (() -> Void)?
     
@@ -212,18 +215,21 @@ class MenuBarStatusView: NSView {
         
         addSubview(stack)
         
+        stackLeadingConstraint = stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalPadding)
+        stackTrailingConstraint = stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -horizontalPadding)
+
         NSLayoutConstraint.activate([
             imageView.widthAnchor.constraint(equalToConstant: 18),
             imageView.heightAnchor.constraint(equalToConstant: 18),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            stackLeadingConstraint,
+            stackTrailingConstraint,
             stack.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
     
     override var intrinsicContentSize: NSSize {
         let size = stack.fittingSize
-        return NSSize(width: size.width + 12, height: max(20, size.height + 6))
+        return NSSize(width: size.width + horizontalPadding * 2, height: max(20, size.height + 6))
     }
     
     func update(keysText: String, clicksText: String) {
@@ -232,12 +238,22 @@ class MenuBarStatusView: NSView {
         
         bottomLabel.stringValue = clicksText
         bottomLabel.isHidden = clicksText.isEmpty
+
+        let hasText = !keysText.isEmpty || !clicksText.isEmpty
+        textStack.isHidden = !hasText
+        updateHorizontalPadding(hasText: hasText)
         
         // 如果只有一个显示，使其居中或者调整布局，这里简化处理，
         // 依靠 StackView 自动处理隐藏视图的布局
         
         invalidateIntrinsicContentSize()
         needsLayout = true
+    }
+
+    private func updateHorizontalPadding(hasText: Bool) {
+        horizontalPadding = hasText ? 6 : 4
+        stackLeadingConstraint.constant = horizontalPadding
+        stackTrailingConstraint.constant = -horizontalPadding
     }
     
     override func mouseDown(with event: NSEvent) {

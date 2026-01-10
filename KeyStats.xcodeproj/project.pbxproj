@@ -18,6 +18,9 @@
 		A1000009 /* MainWindowViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009 /* MainWindowViewController.swift */; };
 		A1000010 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A2000012 /* Localizable.strings */; };
 		A1000011 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013 /* LaunchAtLoginManager.swift */; };
+		A1000012 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014 /* SettingsViewController.swift */; };
+		A1000013 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* SettingsWindowController.swift */; };
+		A1000014 /* HoverIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* HoverIconButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +36,9 @@
 		A2000010 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A2000011 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		A2000013 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
+		A2000014 /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		A2000015 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		A2000016 /* HoverIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoverIconButton.swift; sourceTree = "<group>"; };
 		A3000001 /* KeyStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3000003 /* KeyStats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyStats.entitlements; sourceTree = "<group>"; };
@@ -67,6 +73,9 @@
 				A2000005 /* StatsPopoverViewController.swift */,
 				A2000008 /* MainWindowController.swift */,
 				A2000009 /* MainWindowViewController.swift */,
+				A2000016 /* HoverIconButton.swift */,
+				A2000014 /* SettingsViewController.swift */,
+				A2000015 /* SettingsWindowController.swift */,
 				A2000013 /* LaunchAtLoginManager.swift */,
 				A2000012 /* Localizable.strings */,
 				A2000006 /* Assets.xcassets */,
@@ -165,6 +174,9 @@
 				A1000008 /* MainWindowController.swift in Sources */,
 				A1000009 /* MainWindowViewController.swift in Sources */,
 				A1000011 /* LaunchAtLoginManager.swift in Sources */,
+				A1000012 /* SettingsViewController.swift in Sources */,
+				A1000013 /* SettingsWindowController.swift in Sources */,
+				A1000014 /* HoverIconButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

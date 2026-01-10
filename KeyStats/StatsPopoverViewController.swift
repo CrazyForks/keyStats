@@ -17,6 +17,7 @@ class StatsPopoverViewController: NSViewController {
     private var chartStyleControl: NSSegmentedControl!
     private var chartView: StatsChartView!
     private var historySummaryLabel: NSTextField!
+    private var settingsButton: NSButton!
     private var pendingStatsRefresh = false
     
     // 统计项视图
@@ -27,12 +28,8 @@ class StatsPopoverViewController: NSViewController {
     private var scrollDistanceView: StatItemView!
     
     // 底部按钮
-    private var resetButton: NSButton!
     private var quitButton: NSButton!
     private var permissionButton: NSButton!
-    private var launchAtLoginButton: NSButton!
-    private var showKeyPressesButton: NSButton!
-    private var showMouseClicksButton: NSButton!
     
     // MARK: - 生命周期
     
@@ -72,22 +69,33 @@ class StatsPopoverViewController: NSViewController {
     // MARK: - UI 设置
     
     private func setupUI() {
+        containerView = NSView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(containerView)
+
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: view.topAnchor),
+            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
         // 标题
         titleLabel = createLabel(text: "KeyStats", fontSize: 18, weight: .bold)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(titleLabel)
+        containerView.addSubview(titleLabel)
         
         permissionButton = NSButton(title: NSLocalizedString("button.permission", comment: ""), target: self, action: #selector(requestPermission))
         permissionButton.bezelStyle = .rounded
         permissionButton.controlSize = .regular
         permissionButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(permissionButton)
+        containerView.addSubview(permissionButton)
 
         // 分隔线
         let separator = NSBox()
         separator.boxType = .separator
         separator.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(separator)
+        containerView.addSubview(separator)
         
         // 统计项
         keyPressView = StatItemView(icon: "⌨️", title: NSLocalizedString("stats.keyPresses", comment: ""), value: "0")
@@ -118,12 +126,12 @@ class StatsPopoverViewController: NSViewController {
         statsStackView.orientation = .vertical
         statsStackView.spacing = 8
         statsStackView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(statsStackView)
+        containerView.addSubview(statsStackView)
         
         // 键位统计标题
         keyBreakdownTitleLabel = createLabel(text: NSLocalizedString("section.keyBreakdown", comment: ""), fontSize: 14, weight: .semibold)
         keyBreakdownTitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(keyBreakdownTitleLabel)
+        containerView.addSubview(keyBreakdownTitleLabel)
 
         // 键位统计列表（最多 3 列，每列 5 个）
         keyBreakdownGridStack = NSStackView()
@@ -132,7 +140,7 @@ class StatsPopoverViewController: NSViewController {
         keyBreakdownGridStack.distribution = .fill
         keyBreakdownGridStack.alignment = .top
         keyBreakdownGridStack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(keyBreakdownGridStack)
+        containerView.addSubview(keyBreakdownGridStack)
 
         keyBreakdownColumns = (0..<3).map { index in
             let column = NSStackView()
@@ -159,7 +167,7 @@ class StatsPopoverViewController: NSViewController {
         // 历史趋势标题
         historyTitleLabel = createLabel(text: NSLocalizedString("section.history", comment: ""), fontSize: 14, weight: .semibold)
         historyTitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(historyTitleLabel)
+        containerView.addSubview(historyTitleLabel)
         
         // 时间范围
         rangeControl = NSSegmentedControl(labels: [
@@ -171,7 +179,7 @@ class StatsPopoverViewController: NSViewController {
                                           action: #selector(historyControlsChanged))
         rangeControl.selectedSegment = 0
         rangeControl.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(rangeControl)
+        containerView.addSubview(rangeControl)
         
         // 指标选择
         metricControl = NSSegmentedControl(labels: [
@@ -185,7 +193,7 @@ class StatsPopoverViewController: NSViewController {
                                            action: #selector(historyControlsChanged))
         metricControl.selectedSegment = 0
         metricControl.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(metricControl)
+        containerView.addSubview(metricControl)
         
         // 图表样式
         chartStyleControl = NSSegmentedControl(labels: [
@@ -197,12 +205,12 @@ class StatsPopoverViewController: NSViewController {
                                                action: #selector(historyControlsChanged))
         chartStyleControl.selectedSegment = 0
         chartStyleControl.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(chartStyleControl)
+        containerView.addSubview(chartStyleControl)
         
         // 图表视图
         chartView = StatsChartView()
         chartView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(chartView)
+        containerView.addSubview(chartView)
         
         // 汇总
         historySummaryLabel = createLabel(
@@ -212,32 +220,13 @@ class StatsPopoverViewController: NSViewController {
         )
         historySummaryLabel.textColor = .secondaryLabelColor
         historySummaryLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(historySummaryLabel)
+        containerView.addSubview(historySummaryLabel)
         
         // 底部分隔线
         let bottomSeparator = NSBox()
         bottomSeparator.boxType = .separator
         bottomSeparator.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(bottomSeparator)
-
-        // 设置选项
-        showKeyPressesButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.showKeyPresses", comment: ""),
-                                        target: self,
-                                        action: #selector(toggleShowKeyPresses))
-        
-        showMouseClicksButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.showMouseClicks", comment: ""),
-                                         target: self,
-                                         action: #selector(toggleShowMouseClicks))
-
-        launchAtLoginButton = NSButton(checkboxWithTitle: NSLocalizedString("button.launchAtLogin", comment: ""),
-                                       target: self,
-                                       action: #selector(toggleLaunchAtLogin))
-        
-        let settingsStack = NSStackView(views: [showKeyPressesButton, showMouseClicksButton, launchAtLoginButton])
-        settingsStack.orientation = .vertical
-        settingsStack.alignment = .leading
-        settingsStack.spacing = 6
-        settingsStack.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(bottomSeparator)
         
         // 按钮容器
         let buttonStack = NSStackView()
@@ -245,18 +234,27 @@ class StatsPopoverViewController: NSViewController {
         buttonStack.spacing = 12
         buttonStack.translatesAutoresizingMaskIntoConstraints = false
         
-        // 重置按钮
-        resetButton = NSButton(title: NSLocalizedString("button.reset", comment: ""), target: self, action: #selector(resetStats))
-        resetButton.bezelStyle = .rounded
-        resetButton.controlSize = .regular
-        
         // 退出按钮
         quitButton = NSButton(title: NSLocalizedString("button.quit", comment: ""), target: self, action: #selector(quitApp))
         quitButton.bezelStyle = .rounded
         quitButton.controlSize = .regular
         
-        buttonStack.addArrangedSubview(resetButton)
         buttonStack.addArrangedSubview(quitButton)
+
+        settingsButton = makeSymbolButton(systemName: "gearshape",
+                                          fallbackTitle: NSLocalizedString("settings.title", comment: ""),
+                                          pointSize: 16,
+                                          weight: .semibold,
+                                          action: #selector(openSettings))
+        settingsButton.toolTip = NSLocalizedString("settings.title", comment: "")
+        settingsButton.setAccessibilityLabel(NSLocalizedString("settings.title", comment: ""))
+        settingsButton.imageScaling = .scaleProportionallyDown
+        settingsButton.setContentHuggingPriority(.required, for: .horizontal)
+        settingsButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        if let hoverButton = settingsButton as? HoverIconButton {
+            hoverButton.padding = 4
+            hoverButton.cornerRadius = 6
+        }
 
         let footerStack = NSStackView()
         footerStack.orientation = .horizontal
@@ -271,75 +269,76 @@ class StatsPopoverViewController: NSViewController {
         buttonStack.setContentHuggingPriority(.required, for: .horizontal)
         buttonStack.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        footerStack.addArrangedSubview(settingsStack)
+        footerStack.addArrangedSubview(settingsButton)
         footerStack.addArrangedSubview(footerSpacer)
         footerStack.addArrangedSubview(buttonStack)
 
-        view.addSubview(footerStack)
+        containerView.addSubview(footerStack)
         
         // 布局约束
         NSLayoutConstraint.activate([
             // 标题
-            titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            titleLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
 
             permissionButton.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
-            permissionButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            permissionButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             // 分隔线
             separator.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
-            separator.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            separator.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            separator.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            separator.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             // 统计项
             statsStackView.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 12),
-            statsStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            statsStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            statsStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            statsStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             // 键位统计
             keyBreakdownTitleLabel.topAnchor.constraint(equalTo: statsStackView.bottomAnchor, constant: 16),
-            keyBreakdownTitleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            keyBreakdownTitleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
 
             keyBreakdownGridStack.topAnchor.constraint(equalTo: keyBreakdownTitleLabel.bottomAnchor, constant: 8),
-            keyBreakdownGridStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            keyBreakdownGridStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            keyBreakdownGridStack.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            keyBreakdownGridStack.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             keyBreakdownGridStack.heightAnchor.constraint(equalToConstant: 124),
 
             // 历史趋势
             historyTitleLabel.topAnchor.constraint(equalTo: keyBreakdownGridStack.bottomAnchor, constant: 16),
-            historyTitleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            historyTitleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             
             rangeControl.topAnchor.constraint(equalTo: historyTitleLabel.bottomAnchor, constant: 8),
-            rangeControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            rangeControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            rangeControl.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            rangeControl.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             metricControl.topAnchor.constraint(equalTo: rangeControl.bottomAnchor, constant: 8),
-            metricControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            metricControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            metricControl.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            metricControl.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             chartStyleControl.topAnchor.constraint(equalTo: metricControl.bottomAnchor, constant: 8),
-            chartStyleControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            chartStyleControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            chartStyleControl.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            chartStyleControl.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             chartView.topAnchor.constraint(equalTo: chartStyleControl.bottomAnchor, constant: 8),
-            chartView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            chartView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            chartView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            chartView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             chartView.heightAnchor.constraint(equalToConstant: 140),
             
             historySummaryLabel.topAnchor.constraint(equalTo: chartView.bottomAnchor, constant: 6),
-            historySummaryLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            historySummaryLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             
             // 底部分隔线
             bottomSeparator.topAnchor.constraint(equalTo: historySummaryLabel.bottomAnchor, constant: 12),
-            bottomSeparator.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            bottomSeparator.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            bottomSeparator.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            bottomSeparator.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             // 按钮
             footerStack.topAnchor.constraint(equalTo: bottomSeparator.bottomAnchor, constant: 12),
-            footerStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            footerStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            footerStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16)
+            footerStack.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            footerStack.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            footerStack.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
         ])
+
     }
     
     private func createLabel(text: String, fontSize: CGFloat, weight: NSFont.Weight) -> NSTextField {
@@ -363,7 +362,33 @@ class StatsPopoverViewController: NSViewController {
         view.widthAnchor.constraint(equalToConstant: 1).isActive = true
         return view
     }
-    
+
+    private func makeSymbolButton(systemName: String,
+                                  fallbackTitle: String,
+                                  pointSize: CGFloat? = nil,
+                                  weight: NSFont.Weight = .regular,
+                                  action: Selector) -> NSButton {
+        var image = NSImage(systemSymbolName: systemName, accessibilityDescription: nil)
+        if let pointSize = pointSize, let baseImage = image {
+            let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+            image = baseImage.withSymbolConfiguration(configuration)
+        }
+
+        if let image = image {
+            let button = HoverIconButton(image: image, target: self, action: action)
+            button.isBordered = false
+            button.imagePosition = .imageOnly
+            button.contentTintColor = .labelColor
+            button.translatesAutoresizingMaskIntoConstraints = false
+            return button
+        }
+
+        let button = NSButton(title: fallbackTitle, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }
+
     // MARK: - 更新统计数据
     
     private func updateStats() {
@@ -377,7 +402,6 @@ class StatsPopoverViewController: NSViewController {
         updateKeyBreakdown()
         updateHistorySection()
         updatePermissionButtonVisibility()
-        updateLaunchAtLoginState()
     }
 
     private func startLiveUpdates() {
@@ -446,12 +470,6 @@ class StatsPopoverViewController: NSViewController {
         permissionButton.isHidden = InputMonitor.shared.hasAccessibilityPermission()
     }
 
-    private func updateLaunchAtLoginState() {
-        launchAtLoginButton.state = LaunchAtLoginManager.shared.isEnabled ? .on : .off
-        showKeyPressesButton.state = StatsManager.shared.showKeyPressesInMenuBar ? .on : .off
-        showMouseClicksButton.state = StatsManager.shared.showMouseClicksInMenuBar ? .on : .off
-    }
-
     private func focusPrimaryControl() {
         if !permissionButton.isHidden {
             view.window?.makeFirstResponder(permissionButton)
@@ -498,18 +516,10 @@ class StatsPopoverViewController: NSViewController {
     }
     
     // MARK: - 按钮操作
-    
-    @objc private func resetStats() {
-        let alert = NSAlert()
-        alert.messageText = NSLocalizedString("stats.reset.title", comment: "")
-        alert.informativeText = NSLocalizedString("stats.reset.message", comment: "")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: NSLocalizedString("stats.reset.confirm", comment: ""))
-        alert.addButton(withTitle: NSLocalizedString("stats.reset.cancel", comment: ""))
-        
-        if alert.runModal() == .alertFirstButtonReturn {
-            StatsManager.shared.resetStats()
-        }
+
+    @objc private func openSettings() {
+        SettingsWindowController.shared.show()
+        view.window?.performClose(nil)
     }
 
     @objc private func requestPermission() {
@@ -520,34 +530,6 @@ class StatsPopoverViewController: NSViewController {
     
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
-    }
-
-    @objc private func toggleShowKeyPresses() {
-        StatsManager.shared.showKeyPressesInMenuBar = (showKeyPressesButton.state == .on)
-    }
-    
-    @objc private func toggleShowMouseClicks() {
-        StatsManager.shared.showMouseClicksInMenuBar = (showMouseClicksButton.state == .on)
-    }
-    
-    @objc private func toggleLaunchAtLogin() {
-        let shouldEnable = launchAtLoginButton.state == .on
-        do {
-            try LaunchAtLoginManager.shared.setEnabled(shouldEnable)
-            updateLaunchAtLoginState()
-        } catch {
-            updateLaunchAtLoginState()
-            showLaunchAtLoginError()
-        }
-    }
-
-    private func showLaunchAtLoginError() {
-        let alert = NSAlert()
-        alert.messageText = NSLocalizedString("launchAtLogin.error.title", comment: "")
-        alert.informativeText = NSLocalizedString("launchAtLogin.error.message", comment: "")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: NSLocalizedString("button.ok", comment: ""))
-        alert.runModal()
     }
 
     private func openAccessibilitySettings() {
