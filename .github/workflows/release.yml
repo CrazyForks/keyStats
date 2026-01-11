@@ -7,11 +7,16 @@ on:
 
 jobs:
   build-and-release:
-    runs-on: macos-latest
+    runs-on: macos-26
     permissions:
       contents: write  # 允许创建 Release 和推送代码
 
     steps:
+      - name: Check build environment
+        run: |
+          sw_vers
+          xcodebuild -version
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
