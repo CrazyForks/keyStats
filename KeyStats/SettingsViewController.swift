@@ -212,6 +212,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
             clickThresholdField.stringValue = "\(clamped)"
             clickThresholdStepper.integerValue = clamped
         }
+        requestNotificationPermissionIfNeeded()
     }
 
     private func requestNotificationPermissionIfNeeded() {
