@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1000020 /* AllTimeStatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* AllTimeStatsWindowController.swift */; };
+		A1000021 /* AllTimeStatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* AllTimeStatsViewController.swift */; };
 		A1000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* AppDelegate.swift */; };
 		A1000002 /* InputMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* InputMonitor.swift */; };
 		A1000003 /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* StatsManager.swift */; };
@@ -25,6 +27,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A2000020 /* AllTimeStatsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTimeStatsWindowController.swift; sourceTree = "<group>"; };
+		A2000021 /* AllTimeStatsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTimeStatsViewController.swift; sourceTree = "<group>"; };
 		A2000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A2000002 /* InputMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMonitor.swift; sourceTree = "<group>"; };
 		A2000003 /* StatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsManager.swift; sourceTree = "<group>"; };
@@ -79,6 +83,8 @@
 				A2000017 /* NotificationManager.swift */,
 				A2000014 /* SettingsViewController.swift */,
 				A2000015 /* SettingsWindowController.swift */,
+				A2000020 /* AllTimeStatsWindowController.swift */,
+				A2000021 /* AllTimeStatsViewController.swift */,
 				A2000013 /* LaunchAtLoginManager.swift */,
 				A2000012 /* Localizable.strings */,
 				A2000006 /* Assets.xcassets */,
@@ -179,6 +185,8 @@
 				A1000011 /* LaunchAtLoginManager.swift in Sources */,
 				A1000012 /* SettingsViewController.swift in Sources */,
 				A1000013 /* SettingsWindowController.swift in Sources */,
+				A1000020 /* AllTimeStatsWindowController.swift in Sources */,
+				A1000021 /* AllTimeStatsViewController.swift in Sources */,
 				A1000014 /* HoverIconButton.swift in Sources */,
 				A1000015 /* NotificationManager.swift in Sources */,
 			);

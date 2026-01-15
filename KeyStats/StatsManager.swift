@@ -38,6 +38,21 @@ struct DailyStats: Codable {
         return leftClicks + rightClicks
     }
     
+    /// 纠错率 (Delete + ForwardDelete / Total Keys)
+    var correctionRate: Double {
+        guard keyPresses > 0 else { return 0 }
+        let deleteCount = keyPressCounts["Delete"] ?? 0
+        let forwardDeleteCount = keyPressCounts["ForwardDelete"] ?? 0
+        return Double(deleteCount + forwardDeleteCount) / Double(keyPresses)
+    }
+    
+    /// 键鼠比 (Keys / Clicks)
+    var inputRatio: Double {
+        let clicks = totalClicks
+        guard clicks > 0 else { return keyPresses > 0 ? Double.infinity : 0 }
+        return Double(keyPresses) / Double(clicks)
+    }
+    
     /// 格式化鼠标移动距离
     var formattedMouseDistance: String {
         let meters = mouseDistance * metersPerPixel
@@ -55,6 +70,63 @@ struct DailyStats: Codable {
             return String(format: "%.1f k", scrollDistance / 1000)
         } else {
             return String(format: "%.0f px", scrollDistance)
+        }
+    }
+}
+
+/// 有史以来统计数据结构
+struct AllTimeStats {
+    var totalKeyPresses: Int
+    var totalLeftClicks: Int
+    var totalRightClicks: Int
+    var totalMouseDistance: Double
+    var totalScrollDistance: Double
+    var keyPressCounts: [String: Int]
+    var firstDate: Date?
+    var lastDate: Date?
+    var activeDays: Int
+    var maxDailyKeyPresses: Int
+    var maxDailyKeyPressesDate: Date?
+    var maxDailyClicks: Int
+    var maxDailyClicksDate: Date?
+    var mostActiveWeekday: Int?
+    
+    var totalClicks: Int {
+        return totalLeftClicks + totalRightClicks
+    }
+
+    /// 纠错率 (Delete + ForwardDelete / Total Keys)
+    var correctionRate: Double {
+        guard totalKeyPresses > 0 else { return 0 }
+        let deleteCount = keyPressCounts["Delete"] ?? 0
+        let forwardDeleteCount = keyPressCounts["ForwardDelete"] ?? 0
+        return Double(deleteCount + forwardDeleteCount) / Double(totalKeyPresses)
+    }
+    
+    /// 键鼠比 (Keys / Clicks)
+    var inputRatio: Double {
+        let clicks = totalClicks
+        guard clicks > 0 else { return totalKeyPresses > 0 ? Double.infinity : 0 }
+        return Double(totalKeyPresses) / Double(clicks)
+    }
+    
+    /// 格式化鼠标移动距离
+    var formattedMouseDistance: String {
+        let meters = totalMouseDistance * 0.000264583 // metersPerPixel
+        if meters >= 1000 {
+            return String(format: "%.2f km", meters / 1000)
+        } else if totalMouseDistance >= 1000 {
+            return String(format: "%.1f m", meters)
+        }
+        return String(format: "%.0f px", totalMouseDistance)
+    }
+    
+    /// 格式化滚动距离
+    var formattedScrollDistance: String {
+        if totalScrollDistance >= 10000 {
+            return String(format: "%.1f k", totalScrollDistance / 1000)
+        } else {
+            return String(format: "%.0f px", totalScrollDistance)
         }
     }
 }
@@ -691,5 +763,114 @@ extension StatsManager {
         } else {
             return String(format: "%.0f px", distance)
         }
+    }
+    
+    // MARK: - 全量统计
+    
+    func getAllTimeStats() -> AllTimeStats {
+        var totalStats = AllTimeStats(
+            totalKeyPresses: 0,
+            totalLeftClicks: 0,
+            totalRightClicks: 0,
+            totalMouseDistance: 0,
+            totalScrollDistance: 0,
+            keyPressCounts: [:],
+            firstDate: nil,
+            lastDate: nil,
+            activeDays: 0,
+            maxDailyKeyPresses: 0,
+            maxDailyKeyPressesDate: nil,
+            maxDailyClicks: 0,
+            maxDailyClicksDate: nil,
+            mostActiveWeekday: nil
+        )
+
+        var firstDate: Date?
+        var lastDate: Date?
+        var activeDays = 0
+        var maxDailyKeyPresses = 0
+        var maxDailyKeyPressesDate: Date?
+        var maxDailyClicks = 0
+        var maxDailyClicksDate: Date?
+        
+        // 1=Sun, 2=Mon, ...
+        var weekdayStats: [Int: (total: Int, count: Int)] = [:]
+
+        func aggregate(stats: DailyStats) {
+            totalStats.totalKeyPresses += stats.keyPresses
+            totalStats.totalLeftClicks += stats.leftClicks
+            totalStats.totalRightClicks += stats.rightClicks
+            totalStats.totalMouseDistance += stats.mouseDistance
+            totalStats.totalScrollDistance += stats.scrollDistance
+
+            for (key, count) in stats.keyPressCounts {
+                totalStats.keyPressCounts[key, default: 0] += count
+            }
+
+            if stats.keyPresses > maxDailyKeyPresses {
+                maxDailyKeyPresses = stats.keyPresses
+                maxDailyKeyPressesDate = stats.date
+            }
+            let dailyClicks = stats.leftClicks + stats.rightClicks
+            if dailyClicks > maxDailyClicks {
+                maxDailyClicks = dailyClicks
+                maxDailyClicksDate = stats.date
+            }
+
+            let date = Calendar.current.startOfDay(for: stats.date)
+            
+            // Weekday stats
+            let weekday = Calendar.current.component(.weekday, from: date)
+            let dailyTotal = stats.keyPresses + dailyClicks
+            let current = weekdayStats[weekday, default: (0, 0)]
+            weekdayStats[weekday] = (current.total + dailyTotal, current.count + 1)
+            
+            if let currentFirst = firstDate {
+                if date < currentFirst {
+                    firstDate = date
+                }
+            } else {
+                firstDate = date
+            }
+            if let currentLast = lastDate {
+                if date > currentLast {
+                    lastDate = date
+                }
+            } else {
+                lastDate = date
+            }
+            activeDays += 1
+        }
+
+        for stats in history.values {
+            aggregate(stats: stats)
+        }
+
+        let todayKey = dateFormatter.string(from: currentStats.date)
+        if history[todayKey] == nil {
+            aggregate(stats: currentStats)
+        }
+
+        totalStats.firstDate = firstDate
+        totalStats.lastDate = lastDate
+        totalStats.activeDays = activeDays
+        totalStats.maxDailyKeyPresses = maxDailyKeyPresses
+        totalStats.maxDailyKeyPressesDate = maxDailyKeyPressesDate
+        totalStats.maxDailyClicks = maxDailyClicks
+        totalStats.maxDailyClicksDate = maxDailyClicksDate
+        
+        // Calculate most active weekday
+        var maxAvg = 0.0
+        var bestWeekday: Int?
+        for (day, data) in weekdayStats {
+            let avg = Double(data.total) / Double(data.count)
+            if avg > maxAvg {
+                maxAvg = avg
+                bestWeekday = day
+            }
+        }
+        totalStats.mostActiveWeekday = bestWeekday
+
+        return totalStats
     }
 }
