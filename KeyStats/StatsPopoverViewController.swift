@@ -1,4 +1,5 @@
 import Cocoa
+import TelemetryDeck
 
 /// 统计详情弹出视图控制器
 class StatsPopoverViewController: NSViewController {
@@ -535,6 +536,7 @@ class StatsPopoverViewController: NSViewController {
     // MARK: - 按钮操作
 
     @objc private func openSettings() {
+        TelemetryDeck.signal("settingsOpened")
         SettingsWindowController.shared.show()
         view.window?.performClose(nil)
     }
