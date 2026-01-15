@@ -168,6 +168,11 @@ class StatsManager {
     var menuBarUpdateHandler: (() -> Void)?
     var statsUpdateHandler: (() -> Void)?
     
+    // Cache for All-Time Stats
+    private var cachedHistoryStats: AllTimeStats?
+    private var cachedWeekdayStats: [Int: (total: Int, count: Int)]?
+    private var cachedForDateKey: String?
+    
     /// 设置：是否在菜单栏显示按键数
     var showKeyPressesInMenuBar: Bool {
         didSet {
@@ -768,98 +773,33 @@ extension StatsManager {
     // MARK: - 全量统计
     
     func getAllTimeStats() -> AllTimeStats {
-        var totalStats = AllTimeStats(
-            totalKeyPresses: 0,
-            totalLeftClicks: 0,
-            totalRightClicks: 0,
-            totalMouseDistance: 0,
-            totalScrollDistance: 0,
-            keyPressCounts: [:],
-            firstDate: nil,
-            lastDate: nil,
-            activeDays: 0,
-            maxDailyKeyPresses: 0,
-            maxDailyKeyPressesDate: nil,
-            maxDailyClicks: 0,
-            maxDailyClicksDate: nil,
-            mostActiveWeekday: nil
-        )
-
-        var firstDate: Date?
-        var lastDate: Date?
-        var activeDays = 0
-        var maxDailyKeyPresses = 0
-        var maxDailyKeyPressesDate: Date?
-        var maxDailyClicks = 0
-        var maxDailyClicksDate: Date?
-        
-        // 1=Sun, 2=Mon, ...
-        var weekdayStats: [Int: (total: Int, count: Int)] = [:]
-
-        func aggregate(stats: DailyStats) {
-            totalStats.totalKeyPresses += stats.keyPresses
-            totalStats.totalLeftClicks += stats.leftClicks
-            totalStats.totalRightClicks += stats.rightClicks
-            totalStats.totalMouseDistance += stats.mouseDistance
-            totalStats.totalScrollDistance += stats.scrollDistance
-
-            for (key, count) in stats.keyPressCounts {
-                totalStats.keyPressCounts[key, default: 0] += count
-            }
-
-            if stats.keyPresses > maxDailyKeyPresses {
-                maxDailyKeyPresses = stats.keyPresses
-                maxDailyKeyPressesDate = stats.date
-            }
-            let dailyClicks = stats.leftClicks + stats.rightClicks
-            if dailyClicks > maxDailyClicks {
-                maxDailyClicks = dailyClicks
-                maxDailyClicksDate = stats.date
-            }
-
-            let date = Calendar.current.startOfDay(for: stats.date)
-            
-            // Weekday stats
-            let weekday = Calendar.current.component(.weekday, from: date)
-            let dailyTotal = stats.keyPresses + dailyClicks
-            let current = weekdayStats[weekday, default: (0, 0)]
-            weekdayStats[weekday] = (current.total + dailyTotal, current.count + 1)
-            
-            if let currentFirst = firstDate {
-                if date < currentFirst {
-                    firstDate = date
-                }
-            } else {
-                firstDate = date
-            }
-            if let currentLast = lastDate {
-                if date > currentLast {
-                    lastDate = date
-                }
-            } else {
-                lastDate = date
-            }
-            activeDays += 1
-        }
-
-        for stats in history.values {
-            aggregate(stats: stats)
-        }
-
         let todayKey = dateFormatter.string(from: currentStats.date)
-        if history[todayKey] == nil {
-            aggregate(stats: currentStats)
-        }
-
-        totalStats.firstDate = firstDate
-        totalStats.lastDate = lastDate
-        totalStats.activeDays = activeDays
-        totalStats.maxDailyKeyPresses = maxDailyKeyPresses
-        totalStats.maxDailyKeyPressesDate = maxDailyKeyPressesDate
-        totalStats.maxDailyClicks = maxDailyClicks
-        totalStats.maxDailyClicksDate = maxDailyClicksDate
         
-        // Calculate most active weekday
+        // 1. 检查并重建缓存（如果需要）
+        // 如果缓存不存在，或者缓存是基于旧的日期（比如昨天）生成的，则需要更新
+        if cachedHistoryStats == nil || cachedForDateKey != todayKey {
+            var stats = AllTimeStats.initial()
+            var wdStats: [Int: (total: Int, count: Int)] = [:]
+            
+            // 聚合历史数据（排除今天）
+            for hStats in history.values {
+                if dateFormatter.string(from: hStats.date) == todayKey { continue }
+                aggregate(daily: hStats, into: &stats, weekdays: &wdStats)
+            }
+            
+            cachedHistoryStats = stats
+            cachedWeekdayStats = wdStats
+            cachedForDateKey = todayKey
+        }
+        
+        // 2. 基于缓存开始构建最终结果
+        var totalStats = cachedHistoryStats ?? AllTimeStats.initial()
+        var weekdayStats = cachedWeekdayStats ?? [:]
+        
+        // 3. 聚合内存中最新的今日数据
+        aggregate(daily: currentStats, into: &totalStats, weekdays: &weekdayStats)
+
+        // 4. 计算衍生数据（如每周最佳）
         var maxAvg = 0.0
         var bestWeekday: Int?
         for (day, data) in weekdayStats {
@@ -872,5 +812,51 @@ extension StatsManager {
         totalStats.mostActiveWeekday = bestWeekday
 
         return totalStats
+    }
+    
+    private func aggregate(daily: DailyStats, into total: inout AllTimeStats, weekdays: inout [Int: (total: Int, count: Int)]) {
+        total.totalKeyPresses += daily.keyPresses
+        total.totalLeftClicks += daily.leftClicks
+        total.totalRightClicks += daily.rightClicks
+        total.totalMouseDistance += daily.mouseDistance
+        total.totalScrollDistance += daily.scrollDistance
+
+        for (key, count) in daily.keyPressCounts {
+            total.keyPressCounts[key, default: 0] += count
+        }
+
+        if daily.keyPresses > total.maxDailyKeyPresses {
+            total.maxDailyKeyPresses = daily.keyPresses
+            total.maxDailyKeyPressesDate = daily.date
+        }
+        let dailyClicks = daily.leftClicks + daily.rightClicks
+        if dailyClicks > total.maxDailyClicks {
+            total.maxDailyClicks = dailyClicks
+            total.maxDailyClicksDate = daily.date
+        }
+
+        let date = Calendar.current.startOfDay(for: daily.date)
+        
+        // Weekday stats
+        let weekday = Calendar.current.component(.weekday, from: date)
+        let dailyTotal = daily.keyPresses + dailyClicks
+        let current = weekdays[weekday, default: (0, 0)]
+        weekdays[weekday] = (current.total + dailyTotal, current.count + 1)
+        
+        if let currentFirst = total.firstDate {
+            if date < currentFirst {
+                total.firstDate = date
+            }
+        } else {
+            total.firstDate = date
+        }
+        if let currentLast = total.lastDate {
+            if date > currentLast {
+                total.lastDate = date
+            }
+        } else {
+            total.lastDate = date
+        }
+        total.activeDays += 1
     }
 }

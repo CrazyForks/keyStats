@@ -103,3 +103,9 @@
 "insights.style.mouse" = "鼠标流";
 "insights.style.balanced" = "平衡流";
 "insights.tooltip.inputStyle" = "基于按键数与点击数的比率判定";
+
+"insights.subtitle.weeklyBest" = "每周最佳";
+"insights.subtitle.marathons" = "个马拉松";
+"insights.subtitle.everests" = "座珠峰";
+"insights.subtitle.backspaceDel" = "退格/删除";
+"insights.subtitle.ratioFormat" = "键鼠比: %.1f";

@@ -103,3 +103,9 @@
 "insights.style.mouse" = "Designer";
 "insights.style.balanced" = "Balanced";
 "insights.tooltip.inputStyle" = "Determined by the ratio of key presses to mouse clicks";
+
+"insights.subtitle.weeklyBest" = "Weekly Best";
+"insights.subtitle.marathons" = "Marathons";
+"insights.subtitle.everests" = "Everests";
+"insights.subtitle.backspaceDel" = "Backspace/Del";
+"insights.subtitle.ratioFormat" = "Ratio: %.1f";

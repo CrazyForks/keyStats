@@ -330,7 +330,7 @@ class AllTimeStatsViewController: NSViewController {
         let peakWeekdayItem = InsightItemView(
             title: NSLocalizedString("allTimeStats.mostActiveWeekday", comment: ""),
             value: weekdayStr,
-            subtitle: "Weekly Best",
+            subtitle: NSLocalizedString("insights.subtitle.weeklyBest", comment: ""),
             icon: "🏆",
             tooltip: NSLocalizedString("insights.tooltip.peakWeekday", comment: "")
         )
@@ -344,7 +344,7 @@ class AllTimeStatsViewController: NSViewController {
         let marathonItem = InsightItemView(
             title: NSLocalizedString("allTimeStats.marathonMouse", comment: ""),
             value: String(format: "%.2f", marathons),
-            subtitle: "Marathons",
+            subtitle: NSLocalizedString("insights.subtitle.marathons", comment: ""),
             icon: "🏃",
             tooltip: String(format: NSLocalizedString("insights.tooltip.marathon", comment: ""), marathons)
         )
@@ -382,7 +382,7 @@ class AllTimeStatsViewController: NSViewController {
         let correctionItem = InsightItemView(
             title: NSLocalizedString("insights.perfectionist", comment: ""),
             value: correctionStr,
-            subtitle: "Backspace/Del",
+            subtitle: NSLocalizedString("insights.subtitle.backspaceDel", comment: ""),
             icon: "🔙",
             tooltip: NSLocalizedString("insights.tooltip.perfectionist", comment: "")
         )
