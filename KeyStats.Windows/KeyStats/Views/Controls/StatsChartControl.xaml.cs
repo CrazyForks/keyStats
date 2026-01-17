@@ -39,7 +39,9 @@ public partial class StatsChartControl : System.Windows.Controls.UserControl
     public StatsChartControl()
     {
         InitializeComponent();
-        _textBrush = new SolidColorBrush((Color)Application.Current.Resources[SystemColors.GrayTextColorKey]);
+        // 使用 SystemColors 直接获取颜色，更安全
+        var grayTextColor = SystemColors.GrayTextColor;
+        _textBrush = new SolidColorBrush(grayTextColor);
         SizeChanged += OnSizeChanged;
     }
 

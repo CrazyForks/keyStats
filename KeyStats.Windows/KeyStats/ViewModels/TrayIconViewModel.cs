@@ -150,7 +150,7 @@ public class TrayIconViewModel : ViewModelBase
         }
     }
 
-    private void ShowStats()
+    public void ShowStats()
     {
         try
         {

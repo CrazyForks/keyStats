@@ -1,3 +1,5 @@
+using System;
+using System.Runtime.InteropServices;
 using System.Windows;
 using Hardcodet.Wpf.TaskbarNotification;
 using KeyStats.Services;
@@ -12,6 +14,11 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+#if DEBUG
+        // 在 Debug 模式下分配控制台窗口，方便查看输出
+        AllocConsole();
+        Console.WriteLine("=== KeyStats Debug Console ===");
+#endif
         base.OnStartup(e);
 
         // Global exception handlers
@@ -50,8 +57,17 @@ public partial class App : System.Windows.Application
             {
                 Icon = _trayIconViewModel.TrayIcon,
                 ToolTipText = _trayIconViewModel.TooltipText,
-                LeftClickCommand = _trayIconViewModel.TogglePopupCommand,
                 ContextMenu = CreateContextMenu()
+            };
+            
+            // 使用 TrayLeftMouseDown 事件处理左键单击（按下时立即触发，不需要双击）
+            _trayIcon.TrayLeftMouseDown += (s, e) =>
+            {
+                Console.WriteLine("TrayLeftMouseDown event fired - showing stats");
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    _trayIconViewModel?.ShowStats();
+                });
             };
 
             Console.WriteLine("Tray icon created successfully!");
@@ -107,4 +123,10 @@ public partial class App : System.Windows.Application
         StatsManager.Instance.FlushPendingSave();
         base.OnExit(e);
     }
+
+#if DEBUG
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllocConsole();
+#endif
 }

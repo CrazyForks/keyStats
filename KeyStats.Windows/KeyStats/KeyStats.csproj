@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <!-- 在 Debug 模式下显示控制台窗口，方便查看输出 -->
+    <ApplicationManifest Condition="'$(Configuration)' == 'Debug'">app.manifest</ApplicationManifest>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
