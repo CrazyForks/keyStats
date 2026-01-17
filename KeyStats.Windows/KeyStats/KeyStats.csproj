@@ -18,6 +18,8 @@
     <Authors>KeyStats</Authors>
     <Product>KeyStats</Product>
     <Description>Keyboard and mouse statistics tracker for Windows</Description>
+    <!-- 发布优化：裁剪和 ReadyToRun 通过命令行参数控制（避免 Windows Forms 裁剪冲突） -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +30,16 @@
   <ItemGroup>
     <Resource Include="Resources\Icons\*.ico" />
     <EmbeddedResource Include="Resources\Icons\tray-icon.png" />
+  </ItemGroup>
+
+  <!-- 包含启动器脚本到发布输出（主要用于 FrameworkDependent 版本） -->
+  <ItemGroup>
+    <Content Include="CheckRuntime.bat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CheckRuntime.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

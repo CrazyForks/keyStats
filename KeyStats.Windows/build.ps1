@@ -136,10 +136,16 @@ try {
         $PublishArgs += "--self-contained", "true"
         $PublishArgs += "-p:PublishSingleFile=true"
         $PublishArgs += "-p:IncludeNativeLibrariesForSelfExtract=true"
-        Write-Host "Publish Type: Self-contained single file" -ForegroundColor Yellow
+        $PublishArgs += "-p:PublishTrimmed=true"
+        $PublishArgs += "-p:TrimMode=partial"
+        $PublishArgs += "-p:PublishReadyToRun=true"
+        $PublishArgs += "-p:PublishReadyToRunComposite=true"
+        Write-Host "Publish Type: Self-contained single file (with trimming)" -ForegroundColor Yellow
     } else {
         $PublishArgs += "--self-contained", "false"
-        Write-Host "Publish Type: Framework-dependent" -ForegroundColor Yellow
+        $PublishArgs += "-p:PublishTrimmed=false"
+        $PublishArgs += "-p:PublishReadyToRun=true"
+        Write-Host "Publish Type: Framework-dependent (no trimming, requires .NET Runtime)" -ForegroundColor Yellow
     }
     
     dotnet @PublishArgs
@@ -188,9 +194,21 @@ $ReadmeLines = @(
     "",
     "Installation:",
     "1. Extract this ZIP file to any directory",
-    "2. Run KeyStats.exe",
+    "2. Run KeyStats.exe (or CheckRuntime.bat for runtime check)",
     "3. Grant necessary permissions on first run",
-    "",
+    ""
+)
+
+if ($PublishType -eq "FrameworkDependent") {
+    $ReadmeLines += @(
+        "Note: This version requires .NET 8.0 Desktop Runtime.",
+        "If runtime is not installed, use CheckRuntime.bat for friendly error message.",
+        "Download: https://dotnet.microsoft.com/download/dotnet/8.0",
+        ""
+    )
+}
+
+$ReadmeLines += @(
     "Data Storage:",
     "%LOCALAPPDATA%\KeyStats",
     "",
