@@ -4,14 +4,19 @@
         xmlns:controls="clr-namespace:KeyStats.Views.Controls"
         xmlns:viewmodels="clr-namespace:KeyStats.ViewModels"
         Title="按键统计"
-        Width="360" Height="680"
+        Width="360"
+        SizeToContent="Height"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
-        Deactivated="Window_Deactivated">
+        Deactivated="Window_Deactivated"
+        Opacity="0">
+    <Window.RenderTransform>
+        <TranslateTransform x:Name="WindowTransform"/>
+    </Window.RenderTransform>
 
     <Window.DataContext>
         <viewmodels:StatsPopupViewModel/>
@@ -32,19 +37,11 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Title -->
-            <TextBlock Grid.Row="0" Text="按键统计"
-                       FontSize="18" FontWeight="Bold"
-                       HorizontalAlignment="Center" Margin="0,0,0,12"/>
-
-            <Separator Grid.Row="1" Margin="0,0,0,12"/>
-
             <!-- Stats Section -->
-            <StackPanel Grid.Row="2">
+            <StackPanel Grid.Row="0">
                 <!-- Key Presses -->
                 <controls:StatItemControl Icon="⌨️" Title="按键次数" Value="{Binding KeyPresses}" Margin="0,0,0,8"/>
 
@@ -70,7 +67,7 @@
             </StackPanel>
 
             <!-- Key Breakdown Section -->
-            <StackPanel Grid.Row="3">
+            <StackPanel Grid.Row="1">
                 <TextBlock Text="按键分布" Style="{StaticResource SectionTitle}"/>
                 <controls:KeyBreakdownControl
                     Column1Items="{Binding Column1Items}"
@@ -79,7 +76,7 @@
             </StackPanel>
 
             <!-- History Section -->
-            <StackPanel Grid.Row="4">
+            <StackPanel Grid.Row="2">
                 <TextBlock Text="历史记录" Style="{StaticResource SectionTitle}"/>
 
                 <!-- Range Selection -->
@@ -126,14 +123,14 @@
             </StackPanel>
 
             <!-- Chart -->
-            <controls:StatsChartControl Grid.Row="5"
+            <controls:StatsChartControl Grid.Row="3"
                                         ChartData="{Binding ChartData}"
                                         ChartStyle="{Binding SelectedChartStyleIndex}"
                                         SelectedMetricIndex="{Binding SelectedMetricIndex}"
                                         Margin="0,0,0,6"/>
 
             <!-- Summary -->
-            <TextBlock Grid.Row="6" Text="{Binding HistorySummary}"
+            <TextBlock Grid.Row="4" Text="{Binding HistorySummary}"
                        Style="{StaticResource SecondaryText}" Margin="0,0,0,0"/>
         </Grid>
     </Border>

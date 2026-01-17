@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Media.Animation;
 using System.Windows.Forms;
 using KeyStats.ViewModels;
 
@@ -28,9 +29,95 @@ public partial class StatsPopupWindow : Window
     {
         Console.WriteLine("Window loaded, positioning...");
         PositionNearTray();
+        
+        // 确定动画方向（从任务栏方向滑入）
+        var mousePos = System.Windows.Forms.Control.MousePosition;
+        var screen = Screen.FromPoint(new System.Drawing.Point(mousePos.X, mousePos.Y)) ?? Screen.PrimaryScreen;
+        if (screen != null)
+        {
+            var workingArea = screen.WorkingArea;
+            var screenBounds = screen.Bounds;
+            bool taskbarAtBottom = workingArea.Bottom < screenBounds.Bottom;
+            bool taskbarAtTop = workingArea.Top > screenBounds.Top;
+            bool taskbarAtRight = workingArea.Right < screenBounds.Right;
+            bool taskbarAtLeft = workingArea.Left > screenBounds.Left;
+            
+            double slideDistance = 30; // 滑入距离（像素）
+            double translateY = 0;
+            double translateX = 0;
+            
+            if (taskbarAtBottom)
+            {
+                translateY = slideDistance; // 从下方滑入
+            }
+            else if (taskbarAtTop)
+            {
+                translateY = -slideDistance; // 从上方滑入
+            }
+            else if (taskbarAtRight)
+            {
+                translateX = slideDistance; // 从右侧滑入
+            }
+            else if (taskbarAtLeft)
+            {
+                translateX = -slideDistance; // 从左侧滑入
+            }
+            else
+            {
+                translateY = slideDistance; // 默认从下方滑入
+            }
+            
+            // 设置初始位置（偏移）
+            var transform = (System.Windows.Media.TranslateTransform)FindName("WindowTransform");
+            if (transform != null)
+            {
+                transform.X = translateX;
+                transform.Y = translateY;
+            }
+            
+            // 执行滑入动画
+            SlideIn(translateX, translateY);
+        }
+        
         _isFullyLoaded = true;
         Console.WriteLine($"Window positioned at {Left}, {Top}");
         Activate();
+    }
+    
+    private void SlideIn(double startX, double startY)
+    {
+        var transform = (System.Windows.Media.TranslateTransform)FindName("WindowTransform");
+        if (transform == null) return;
+        
+        // 淡入动画
+        var opacityAnimation = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        
+        // 滑入动画
+        var translateXAnimation = new DoubleAnimation
+        {
+            From = startX,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        
+        var translateYAnimation = new DoubleAnimation
+        {
+            From = startY,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        
+        BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
+        transform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, translateXAnimation);
+        transform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, translateYAnimation);
     }
 
     private void OnClosed(object? sender, EventArgs e)
@@ -43,8 +130,92 @@ public partial class StatsPopupWindow : Window
         Console.WriteLine($"Window_Deactivated called, _isFullyLoaded={_isFullyLoaded}");
         if (_isFullyLoaded)
         {
-            Close();
+            SlideOut();
         }
+    }
+    
+    private void SlideOut()
+    {
+        var transform = (System.Windows.Media.TranslateTransform)FindName("WindowTransform");
+        if (transform == null)
+        {
+            Close();
+            return;
+        }
+        
+        // 确定滑出方向（向任务栏方向滑出）
+        var mousePos = System.Windows.Forms.Control.MousePosition;
+        var screen = Screen.FromPoint(new System.Drawing.Point(mousePos.X, mousePos.Y)) ?? Screen.PrimaryScreen;
+        if (screen == null)
+        {
+            Close();
+            return;
+        }
+        
+        var workingArea = screen.WorkingArea;
+        var screenBounds = screen.Bounds;
+        bool taskbarAtBottom = workingArea.Bottom < screenBounds.Bottom;
+        bool taskbarAtTop = workingArea.Top > screenBounds.Top;
+        bool taskbarAtRight = workingArea.Right < screenBounds.Right;
+        bool taskbarAtLeft = workingArea.Left > screenBounds.Left;
+        
+        double slideDistance = 30;
+        double endX = 0;
+        double endY = 0;
+        
+        if (taskbarAtBottom)
+        {
+            endY = slideDistance; // 向下滑出
+        }
+        else if (taskbarAtTop)
+        {
+            endY = -slideDistance; // 向上滑出
+        }
+        else if (taskbarAtRight)
+        {
+            endX = slideDistance; // 向右滑出
+        }
+        else if (taskbarAtLeft)
+        {
+            endX = -slideDistance; // 向左滑出
+        }
+        else
+        {
+            endY = slideDistance; // 默认向下滑出
+        }
+        
+        // 淡出动画
+        var opacityAnimation = new DoubleAnimation
+        {
+            From = Opacity,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(150),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        
+        // 滑出动画
+        var translateXAnimation = new DoubleAnimation
+        {
+            From = transform.X,
+            To = endX,
+            Duration = TimeSpan.FromMilliseconds(150),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        
+        var translateYAnimation = new DoubleAnimation
+        {
+            From = transform.Y,
+            To = endY,
+            Duration = TimeSpan.FromMilliseconds(150),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        
+        // 动画完成后关闭窗口
+        opacityAnimation.Completed += (s, e) => Close();
+        
+        BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
+        transform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, translateXAnimation);
+        transform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, translateYAnimation);
     }
 
     private void PositionNearTray()

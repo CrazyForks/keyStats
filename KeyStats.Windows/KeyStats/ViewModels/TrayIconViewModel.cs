@@ -4,10 +4,13 @@ using System.Windows.Media;
 using System.Reflection;
 using System.IO;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using KeyStats.Helpers;
 using KeyStats.Services;
 using KeyStats.Views;
 using DrawingIcon = System.Drawing.Icon;
+using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace KeyStats.ViewModels;
 
@@ -65,10 +68,11 @@ public class TrayIconViewModel : ViewModelBase
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream != null)
             {
-                using var bitmap = new Bitmap(stream);
+                using var originalBitmap = new Bitmap(stream);
                 // 转换为图标，使用系统托盘图标大小
                 int iconSize = GetSystemTrayIconSize();
-                using var resizedBitmap = new Bitmap(bitmap, iconSize, iconSize);
+                // 使用高质量缩放算法
+                using var resizedBitmap = ResizeBitmapHighQuality(originalBitmap, iconSize, iconSize);
                 TrayIcon = Icon.FromHandle(resizedBitmap.GetHicon());
                 return;
             }
@@ -85,9 +89,10 @@ public class TrayIconViewModel : ViewModelBase
             var iconPath = Path.Combine(exePath ?? "", "Resources", "Icons", "tray-icon.png");
             if (File.Exists(iconPath))
             {
-                using var bitmap = new Bitmap(iconPath);
+                using var originalBitmap = new Bitmap(iconPath);
                 int iconSize = GetSystemTrayIconSize();
-                using var resizedBitmap = new Bitmap(bitmap, iconSize, iconSize);
+                // 使用高质量缩放算法
+                using var resizedBitmap = ResizeBitmapHighQuality(originalBitmap, iconSize, iconSize);
                 TrayIcon = Icon.FromHandle(resizedBitmap.GetHicon());
                 return;
             }
@@ -117,6 +122,26 @@ public class TrayIconViewModel : ViewModelBase
         if (size <= 32) return 32;
         if (size <= 48) return 48;
         return 64;
+    }
+
+    /// <summary>
+    /// 使用高质量算法缩放位图，减少模糊
+    /// </summary>
+    private static Bitmap ResizeBitmapHighQuality(Bitmap original, int width, int height)
+    {
+        var resized = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(resized))
+        {
+            // 使用高质量设置
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.SmoothingMode = SmoothingMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.CompositingQuality = CompositingQuality.HighQuality;
+            
+            // 绘制缩放后的图像
+            g.DrawImage(original, 0, 0, width, height);
+        }
+        return resized;
     }
 
     private void UpdateTooltip()
