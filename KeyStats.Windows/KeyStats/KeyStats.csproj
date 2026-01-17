@@ -9,6 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <!-- <ApplicationIcon>Resources\Icons\app.ico</ApplicationIcon> -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyName>KeyStats</AssemblyName>
     <RootNamespace>KeyStats</RootNamespace>
     <Version>1.0.0</Version>
@@ -24,7 +25,7 @@
 
   <ItemGroup>
     <Resource Include="Resources\Icons\*.ico" />
-    <Resource Include="Resources\Icons\*.png" />
+    <EmbeddedResource Include="Resources\Icons\tray-icon.png" />
   </ItemGroup>
 
 </Project>

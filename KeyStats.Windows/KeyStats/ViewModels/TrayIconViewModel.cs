@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Reflection;
+using System.IO;
+using System.Drawing;
 using KeyStats.Helpers;
 using KeyStats.Services;
 using KeyStats.Views;
@@ -56,24 +59,67 @@ public class TrayIconViewModel : ViewModelBase
 
     private void UpdateTrayIcon()
     {
-        var color = StatsManager.Instance.CurrentIconTintColor;
-        var settings = StatsManager.Instance.Settings;
-        var stats = StatsManager.Instance.CurrentStats;
-
-        // Get text to display on icon
-        string? keysText = null;
-        string? clicksText = null;
-
-        if (settings.ShowKeyPressesInTray)
+        // 使用静态图标文件
+        try
         {
-            keysText = stats.KeyPresses.ToString();
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = "KeyStats.Resources.Icons.tray-icon.png";
+            
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream != null)
+            {
+                using var bitmap = new Bitmap(stream);
+                // 转换为图标，使用系统托盘图标大小
+                int iconSize = GetSystemTrayIconSize();
+                using var resizedBitmap = new Bitmap(bitmap, iconSize, iconSize);
+                TrayIcon = Icon.FromHandle(resizedBitmap.GetHicon());
+                return;
+            }
         }
-        if (settings.ShowMouseClicksInTray)
+        catch (Exception ex)
         {
-            clicksText = stats.TotalClicks.ToString();
+            Console.WriteLine($"Error loading tray icon: {ex.Message}");
         }
 
-        TrayIcon = IconGenerator.CreateTrayIcon(color, keysText, clicksText);
+        // 如果加载失败，尝试从文件系统加载
+        try
+        {
+            var exePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var iconPath = Path.Combine(exePath ?? "", "Resources", "Icons", "tray-icon.png");
+            if (File.Exists(iconPath))
+            {
+                using var bitmap = new Bitmap(iconPath);
+                int iconSize = GetSystemTrayIconSize();
+                using var resizedBitmap = new Bitmap(bitmap, iconSize, iconSize);
+                TrayIcon = Icon.FromHandle(resizedBitmap.GetHicon());
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tray icon from file: {ex.Message}");
+        }
+
+        // 如果都失败，使用默认的动态生成图标
+        TrayIcon = IconGenerator.CreateTrayIconKeyboard();
+    }
+
+    private static int GetSystemTrayIconSize()
+    {
+        // Get DPI scale factor
+        using var screen = Graphics.FromHwnd(IntPtr.Zero);
+        var dpiX = screen.DpiX;
+
+        // Base size is 16 at 96 DPI (100%)
+        int size = (int)(16 * dpiX / 96);
+
+        // Clamp to reasonable sizes
+        if (size <= 16) return 16;
+        if (size <= 20) return 20;
+        if (size <= 24) return 24;
+        if (size <= 32) return 32;
+        if (size <= 48) return 48;
+        return 64;
     }
 
     private void UpdateTooltip()

@@ -5,10 +5,10 @@ namespace KeyStats.Models;
 public class AppSettings
 {
     [JsonPropertyName("showKeyPressesInTray")]
-    public bool ShowKeyPressesInTray { get; set; } = true;
+    public bool ShowKeyPressesInTray { get; set; } = false; // 默认只显示键盘图标
 
     [JsonPropertyName("showMouseClicksInTray")]
-    public bool ShowMouseClicksInTray { get; set; } = true;
+    public bool ShowMouseClicksInTray { get; set; } = false; // 默认只显示键盘图标
 
     [JsonPropertyName("notificationsEnabled")]
     public bool NotificationsEnabled { get; set; }

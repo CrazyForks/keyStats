@@ -13,6 +13,11 @@ namespace KeyStats.Helpers;
 
 public static class IconGenerator
 {
+    private const string TrayFontFamily = "Segoe UI";
+    private const float TrayFontScale = 2.2f; // 增大到 2.2，使字号更大
+    private const float TrayTextPaddingRatio = 0.08f;
+    private const float TrayLineSpacingRatio = 0.04f;
+
     /// <summary>
     /// Creates a tray icon with two lines of stats (keys on top, clicks on bottom)
     /// </summary>
@@ -24,11 +29,17 @@ public static class IconGenerator
         using var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
         using var g = Graphics.FromImage(bitmap);
 
+        // 清除背景为完全透明
+        g.Clear(DrawingColor.Transparent);
+
         g.SmoothingMode = SmoothingMode.HighQuality;
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+        g.PixelOffsetMode = PixelOffsetMode.Half; // 使用 Half 确保文字对齐到像素边界，提高清晰�?
+        // 使用 AntiAlias 而不是 ClearType，因为 ClearType 在透明背景上效果不佳，颜色覆盖不完整
+        g.TextRenderingHint = TextRenderingHint.AntiAlias;
         g.CompositingQuality = CompositingQuality.HighQuality;
+        // 使用 SourceOver 合成模式，确保颜色完全覆盖
+        g.CompositingMode = CompositingMode.SourceOver;
 
         var iconColor = tintColor ?? DrawingColor.Black;
 
@@ -75,40 +86,78 @@ public static class IconGenerator
         var keysDisplay = !string.IsNullOrEmpty(keysText) ? FormatIconNumber(keysText) : "";
         var clicksDisplay = !string.IsNullOrEmpty(clicksText) ? FormatIconNumber(clicksText) : "";
 
-        // Scale factor based on size (base is 32)
+        if (string.IsNullOrEmpty(keysDisplay) && string.IsNullOrEmpty(clicksDisplay))
+        {
+            return;
+        }
+
         float scale = size / 32f;
         var maxLen = Math.Max(keysDisplay.Length, clicksDisplay.Length);
 
-        // Base font sizes for 32px, scaled up
         float baseFontSize = maxLen switch
         {
-            1 => 18f,
-            2 => 16f,
-            3 => 14f,
-            _ => 12f
+            1 => 30f,  // 增大字号
+            2 => 28f,  // 增大字号
+            3 => 26f,  // 增大字号
+            _ => 24f   // 增大字号
         };
 
-        float fontSize = baseFontSize * scale;
-        using var font = new Font("Arial", fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+        float fontSize = baseFontSize * scale * TrayFontScale;
+        float padding = MathF.Max(1f, size * TrayTextPaddingRatio);
+        float lineSpacing = MathF.Max(0f, size * TrayLineSpacingRatio);
 
-        var lineHeight = fontSize + (2 * scale); // 行间距
-        var totalHeight = lineHeight * 2;
-        var startY = (size - totalHeight) / 2;
+        using var format = (StringFormat)StringFormat.GenericTypographic.Clone();
+        format.FormatFlags |= StringFormatFlags.NoWrap;
+        format.Trimming = StringTrimming.None;
 
-        // Draw top line (keys)
+        using var measureFont = new Font(TrayFontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+        var lineCount = 0;
+        var maxTextWidth = 0f;
         if (!string.IsNullOrEmpty(keysDisplay))
         {
-            var textSize = g.MeasureString(keysDisplay, font);
-            var x = (size - textSize.Width) / 2;
-            g.DrawString(keysDisplay, font, brush, x, startY);
+            lineCount++;
+            maxTextWidth = MathF.Max(maxTextWidth, g.MeasureString(keysDisplay, measureFont, int.MaxValue, format).Width);
         }
-
-        // Draw bottom line (clicks)
         if (!string.IsNullOrEmpty(clicksDisplay))
         {
-            var textSize = g.MeasureString(clicksDisplay, font);
-            var x = (size - textSize.Width) / 2;
-            g.DrawString(clicksDisplay, font, brush, x, startY + lineHeight);
+            lineCount++;
+            maxTextWidth = MathF.Max(maxTextWidth, g.MeasureString(clicksDisplay, measureFont, int.MaxValue, format).Width);
+        }
+
+        float lineHeight = measureFont.GetHeight(g);
+        float totalHeight = (lineHeight * lineCount) + (lineSpacing * Math.Max(0, lineCount - 1));
+        float maxWidth = size - (padding * 2f);
+
+        float fitScale = 1f;
+        if (maxTextWidth > maxWidth && maxTextWidth > 0f)
+        {
+            fitScale = MathF.Min(fitScale, maxWidth / maxTextWidth);
+        }
+        if (fitScale < 1f)
+        {
+            fontSize *= fitScale;
+        }
+
+        using var font = new Font(TrayFontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+        lineHeight = font.GetHeight(g);
+        totalHeight = (lineHeight * lineCount) + (lineSpacing * Math.Max(0, lineCount - 1));
+        var startY = AlignToPixel((size - totalHeight) / 2f);
+
+        if (!string.IsNullOrEmpty(keysDisplay))
+        {
+            var textWidth = g.MeasureString(keysDisplay, font, int.MaxValue, format).Width;
+            var x = AlignToPixel((size - textWidth) / 2f);
+            var y = AlignToPixel(startY);
+            g.DrawString(keysDisplay, font, brush, x, y, format);
+            startY += lineHeight + lineSpacing;
+        }
+
+        if (!string.IsNullOrEmpty(clicksDisplay))
+        {
+            var textWidth = g.MeasureString(clicksDisplay, font, int.MaxValue, format).Width;
+            var x = AlignToPixel((size - textWidth) / 2f);
+            var y = AlignToPixel(startY);
+            g.DrawString(clicksDisplay, font, brush, x, y, format);
         }
     }
 
@@ -299,5 +348,10 @@ public static class IconGenerator
             (int)(color.G + (255 - color.G) * fraction),
             (int)(color.B + (255 - color.B) * fraction)
         );
+    }
+
+    private static float AlignToPixel(float value)
+    {
+        return (float)Math.Round(value);
     }
 }
