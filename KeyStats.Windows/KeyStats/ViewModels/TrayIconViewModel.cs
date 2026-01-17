@@ -16,7 +16,6 @@ public class TrayIconViewModel : ViewModelBase
     private DrawingIcon? _trayIcon;
     private string _tooltipText = "KeyStats";
     private StatsPopupWindow? _popupWindow;
-    private SettingsWindow? _settingsWindow;
 
     public DrawingIcon? TrayIcon
     {
@@ -32,14 +31,12 @@ public class TrayIconViewModel : ViewModelBase
 
     public ICommand TogglePopupCommand { get; }
     public ICommand ShowStatsCommand { get; }
-    public ICommand ShowSettingsCommand { get; }
     public ICommand QuitCommand { get; }
 
     public TrayIconViewModel()
     {
         TogglePopupCommand = new RelayCommand(TogglePopup);
         ShowStatsCommand = new RelayCommand(ShowStats);
-        ShowSettingsCommand = new RelayCommand(ShowSettings);
         QuitCommand = new RelayCommand(Quit);
 
         UpdateTrayIcon();
@@ -176,18 +173,6 @@ public class TrayIconViewModel : ViewModelBase
         }
     }
 
-    private void ShowSettings()
-    {
-        if (_settingsWindow != null)
-        {
-            _settingsWindow.Activate();
-            return;
-        }
-
-        _settingsWindow = new SettingsWindow();
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-        _settingsWindow.Show();
-    }
 
     private void Quit()
     {

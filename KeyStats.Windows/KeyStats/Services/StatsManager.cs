@@ -504,10 +504,16 @@ public class StatsManager : IDisposable
         var threshold = Settings.KeyPressNotifyThreshold;
         if (threshold <= 0) return;
         var count = CurrentStats.KeyPresses;
-        if (count % threshold != 0) return;
-        if (count == _lastNotifiedKeyPresses) return;
-        _lastNotifiedKeyPresses = count;
-        NotificationService.Instance.SendThresholdNotification(NotificationService.Metric.KeyPresses, count);
+        
+        // 计算当前计数对应的阈值里程碑（向下取整到最近的阈值倍数）
+        var currentThreshold = NormalizedBaseline(count, threshold);
+        
+        // 如果当前阈值里程碑大于上次通知的阈值里程碑，则发送通知
+        if (currentThreshold > _lastNotifiedKeyPresses)
+        {
+            _lastNotifiedKeyPresses = currentThreshold;
+            NotificationService.Instance.SendThresholdNotification(NotificationService.Metric.KeyPresses, currentThreshold);
+        }
     }
 
     private void NotifyClickThresholdIfNeeded()
@@ -516,10 +522,16 @@ public class StatsManager : IDisposable
         var threshold = Settings.ClickNotifyThreshold;
         if (threshold <= 0) return;
         var count = CurrentStats.TotalClicks;
-        if (count % threshold != 0) return;
-        if (count == _lastNotifiedClicks) return;
-        _lastNotifiedClicks = count;
-        NotificationService.Instance.SendThresholdNotification(NotificationService.Metric.Clicks, count);
+        
+        // 计算当前计数对应的阈值里程碑（向下取整到最近的阈值倍数）
+        var currentThreshold = NormalizedBaseline(count, threshold);
+        
+        // 如果当前阈值里程碑大于上次通知的阈值里程碑，则发送通知
+        if (currentThreshold > _lastNotifiedClicks)
+        {
+            _lastNotifiedClicks = currentThreshold;
+            NotificationService.Instance.SendThresholdNotification(NotificationService.Metric.Clicks, currentThreshold);
+        }
     }
 
     #endregion
@@ -535,7 +547,7 @@ public class StatsManager : IDisposable
 
     public string GetTooltipText()
     {
-        return $"按键: {CurrentStats.KeyPresses:N0} | 点击: {CurrentStats.TotalClicks:N0}";
+        return $"键盘: {CurrentStats.KeyPresses:N0}\n鼠标: {CurrentStats.TotalClicks:N0}";
     }
 
     private string FormatMenuBarNumber(int number)

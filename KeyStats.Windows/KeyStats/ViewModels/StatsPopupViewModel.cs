@@ -102,16 +102,10 @@ public class StatsPopupViewModel : ViewModelBase
 
     public ObservableCollection<ChartDataPoint> ChartData { get; } = new();
 
-    public ICommand OpenSettingsCommand { get; }
     public ICommand QuitCommand { get; }
-
-    public event Action? RequestClose;
-
-    private SettingsWindow? _settingsWindow;
 
     public StatsPopupViewModel()
     {
-        OpenSettingsCommand = new RelayCommand(OpenSettings);
         QuitCommand = new RelayCommand(Quit);
 
         UpdateStats();
@@ -209,20 +203,6 @@ public class StatsPopupViewModel : ViewModelBase
         HistorySummary = $"总计: {formatted}";
 
         OnPropertyChanged(nameof(ChartData));
-    }
-
-    private void OpenSettings()
-    {
-        if (_settingsWindow != null)
-        {
-            _settingsWindow.Activate();
-            return;
-        }
-
-        _settingsWindow = new SettingsWindow();
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-        _settingsWindow.Show();
-        RequestClose?.Invoke();
     }
 
     private void Quit()

@@ -1,9 +1,11 @@
 using System.Collections;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using KeyStats.Services;
 using KeyStats.ViewModels;
 
 namespace KeyStats.Views.Controls;
@@ -12,11 +14,15 @@ public partial class StatsChartControl : System.Windows.Controls.UserControl
 {
     public static readonly DependencyProperty ChartDataProperty =
         DependencyProperty.Register(nameof(ChartData), typeof(IEnumerable), typeof(StatsChartControl),
-            new PropertyMetadata(null, OnDataChanged));
+            new PropertyMetadata(null, OnChartDataChanged));
 
     public static readonly DependencyProperty ChartStyleProperty =
         DependencyProperty.Register(nameof(ChartStyle), typeof(int), typeof(StatsChartControl),
-            new PropertyMetadata(0, OnDataChanged));
+            new PropertyMetadata(0, OnPropertyChanged));
+
+    public static readonly DependencyProperty SelectedMetricIndexProperty =
+        DependencyProperty.Register(nameof(SelectedMetricIndex), typeof(int), typeof(StatsChartControl),
+            new PropertyMetadata(0, OnPropertyChanged));
 
     public IEnumerable? ChartData
     {
@@ -28,6 +34,12 @@ public partial class StatsChartControl : System.Windows.Controls.UserControl
     {
         get => (int)GetValue(ChartStyleProperty);
         set => SetValue(ChartStyleProperty, value);
+    }
+
+    public int SelectedMetricIndex
+    {
+        get => (int)GetValue(SelectedMetricIndexProperty);
+        set => SetValue(SelectedMetricIndexProperty, value);
     }
 
     private readonly SolidColorBrush _lineBrush = new(Color.FromRgb(0, 120, 212));
@@ -45,7 +57,33 @@ public partial class StatsChartControl : System.Windows.Controls.UserControl
         SizeChanged += OnSizeChanged;
     }
 
-    private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnChartDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is StatsChartControl control)
+        {
+            // 取消订阅旧集合的变化事件
+            if (e.OldValue is INotifyCollectionChanged oldCollection)
+            {
+                oldCollection.CollectionChanged -= control.OnChartDataCollectionChanged;
+            }
+
+            // 订阅新集合的变化事件
+            if (e.NewValue is INotifyCollectionChanged newCollection)
+            {
+                newCollection.CollectionChanged += control.OnChartDataCollectionChanged;
+            }
+
+            control.DrawChart();
+        }
+    }
+
+    private void OnChartDataCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // 当集合内容变化时，重新绘制图表
+        DrawChart();
+    }
+
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is StatsChartControl control)
         {
@@ -293,10 +331,16 @@ public partial class StatsChartControl : System.Windows.Controls.UserControl
 
     private string FormatValue(double value)
     {
-        if (value >= 1_000_000)
-            return $"{value / 1_000_000:F1}M";
-        if (value >= 1_000)
-            return $"{value / 1_000:F1}k";
-        return value.ToString("N0");
+        // 根据当前选择的指标类型使用不同的格式化方法
+        var metric = SelectedMetricIndex switch
+        {
+            0 => StatsManager.HistoryMetric.KeyPresses,
+            1 => StatsManager.HistoryMetric.Clicks,
+            2 => StatsManager.HistoryMetric.MouseDistance,
+            3 => StatsManager.HistoryMetric.ScrollDistance,
+            _ => StatsManager.HistoryMetric.KeyPresses
+        };
+
+        return StatsManager.Instance.FormatHistoryValue(metric, value);
     }
 }

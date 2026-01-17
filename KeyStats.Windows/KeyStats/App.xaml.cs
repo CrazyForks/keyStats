@@ -102,10 +102,6 @@ public partial class App : System.Windows.Application
         showStatsItem.Click += (s, e) => _trayIconViewModel?.ShowStatsCommand.Execute(null);
         menu.Items.Add(showStatsItem);
 
-        var settingsItem = new System.Windows.Controls.MenuItem { Header = "设置" };
-        settingsItem.Click += (s, e) => _trayIconViewModel?.ShowSettingsCommand.Execute(null);
-        menu.Items.Add(settingsItem);
-
         menu.Items.Add(new System.Windows.Controls.Separator());
 
         var quitItem = new System.Windows.Controls.MenuItem { Header = "退出" };

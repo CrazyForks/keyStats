@@ -34,7 +34,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Title -->
@@ -89,9 +88,9 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <RadioButton Grid.Column="0" Content="本周" GroupName="Range"
+                    <RadioButton Grid.Column="0" Content="最近7天" GroupName="Range"
                                  IsChecked="{Binding SelectedRangeIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"/>
-                    <RadioButton Grid.Column="1" Content="本月" GroupName="Range"
+                    <RadioButton Grid.Column="1" Content="最近30天" GroupName="Range"
                                  IsChecked="{Binding SelectedRangeIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"/>
                 </Grid>
 
@@ -103,9 +102,9 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <RadioButton Grid.Column="0" Content="按键" GroupName="Metric" FontSize="11"
+                    <RadioButton Grid.Column="0" Content="点击" GroupName="Metric" FontSize="11"
                                  IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"/>
-                    <RadioButton Grid.Column="1" Content="点击" GroupName="Metric" FontSize="11"
+                    <RadioButton Grid.Column="1" Content="按键" GroupName="Metric" FontSize="11"
                                  IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"/>
                     <RadioButton Grid.Column="2" Content="移动" GroupName="Metric" FontSize="11"
                                  IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}"/>
@@ -130,27 +129,12 @@
             <controls:StatsChartControl Grid.Row="5"
                                         ChartData="{Binding ChartData}"
                                         ChartStyle="{Binding SelectedChartStyleIndex}"
+                                        SelectedMetricIndex="{Binding SelectedMetricIndex}"
                                         Margin="0,0,0,6"/>
 
             <!-- Summary -->
             <TextBlock Grid.Row="6" Text="{Binding HistorySummary}"
-                       Style="{StaticResource SecondaryText}" Margin="0,0,0,12"/>
-
-            <Separator Grid.Row="7" Margin="0,0,0,12"/>
-
-            <!-- Footer Buttons -->
-            <Grid Grid.Row="7" Margin="0,12,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <Button Grid.Column="0" Content="⚙️" Command="{Binding OpenSettingsCommand}"
-                        ToolTip="设置" Width="32" MinWidth="32" Padding="4"/>
-
-                <Button Grid.Column="2" Content="退出" Command="{Binding QuitCommand}"/>
-            </Grid>
+                       Style="{StaticResource SecondaryText}" Margin="0,0,0,0"/>
         </Grid>
     </Border>
 </Window>

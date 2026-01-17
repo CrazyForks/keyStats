@@ -18,7 +18,6 @@ public partial class StatsPopupWindow : Window
         Console.WriteLine("InitializeComponent done");
 
         _viewModel = (StatsPopupViewModel)DataContext;
-        _viewModel.RequestClose += () => Close();
 
         Loaded += OnLoaded;
         Closed += OnClosed;
