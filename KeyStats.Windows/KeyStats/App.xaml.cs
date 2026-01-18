@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Data;
@@ -48,6 +49,8 @@ public partial class App : System.Windows.Application
                 return;
             }
             _singleInstanceMutex = mutex;
+
+            EnsureStartMenuShortcut();
 
             Console.WriteLine("Initializing services...");
             // Initialize services
@@ -145,6 +148,49 @@ public partial class App : System.Windows.Application
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         base.OnExit(e);
+    }
+
+    private static void EnsureStartMenuShortcut()
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exePath))
+            {
+                return;
+            }
+
+            var programsDir = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+            if (string.IsNullOrWhiteSpace(programsDir))
+            {
+                return;
+            }
+
+            var shortcutPath = Path.Combine(programsDir, "KeyStats.lnk");
+            if (File.Exists(shortcutPath))
+            {
+                return;
+            }
+
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null)
+            {
+                return;
+            }
+
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic shortcut = shell.CreateShortcut(shortcutPath);
+            shortcut.TargetPath = exePath;
+            shortcut.WorkingDirectory = Path.GetDirectoryName(exePath);
+            shortcut.WindowStyle = 1;
+            shortcut.Description = "KeyStats";
+            shortcut.IconLocation = exePath;
+            shortcut.Save();
+        }
+        catch
+        {
+            // Ignore failures; app should still run.
+        }
     }
 
 #if DEBUG
