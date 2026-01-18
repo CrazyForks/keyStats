@@ -30,6 +30,9 @@ public partial class StatsPopupWindow : Window
         Console.WriteLine("Window loaded, positioning...");
         PositionNearTray();
         
+        // 追踪页面浏览
+        App.CurrentApp?.TrackPageView("stats_popup");
+        
         // 确定动画方向（从任务栏方向滑入）
         var mousePos = System.Windows.Forms.Control.MousePosition;
         var screen = Screen.FromPoint(new System.Drawing.Point(mousePos.X, mousePos.Y)) ?? Screen.PrimaryScreen;

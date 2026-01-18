@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -66,7 +67,15 @@ public class StatsPopupViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _selectedRangeIndex, value))
+            {
+                var rangeName = value == 0 ? "7天" : "30天";
+                App.CurrentApp?.TrackClick("chart_range", new Dictionary<string, object?>
+                {
+                    ["range"] = rangeName,
+                    ["range_index"] = value
+                });
                 UpdateHistorySection();
+            }
         }
     }
 
@@ -76,7 +85,22 @@ public class StatsPopupViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _selectedMetricIndex, value))
+            {
+                var metricName = value switch
+                {
+                    0 => "点击",
+                    1 => "按键",
+                    2 => "移动",
+                    3 => "滚动",
+                    _ => "未知"
+                };
+                App.CurrentApp?.TrackClick("chart_metric", new Dictionary<string, object?>
+                {
+                    ["metric"] = metricName,
+                    ["metric_index"] = value
+                });
                 UpdateHistorySection();
+            }
         }
     }
 
@@ -86,7 +110,15 @@ public class StatsPopupViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _selectedChartStyleIndex, value))
+            {
+                var styleName = value == 0 ? "折线" : "柱状";
+                App.CurrentApp?.TrackClick("chart_style", new Dictionary<string, object?>
+                {
+                    ["style"] = styleName,
+                    ["style_index"] = value
+                });
                 UpdateHistorySection();
+            }
         }
     }
 
@@ -207,6 +239,7 @@ public class StatsPopupViewModel : ViewModelBase
 
     private void Quit()
     {
+        App.CurrentApp?.TrackClick("popup_quit");
         StatsManager.Instance.FlushPendingSave();
         InputMonitorService.Instance.StopMonitoring();
         Application.Current.Shutdown();

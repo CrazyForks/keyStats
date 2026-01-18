@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -6,6 +8,8 @@ using System.Windows.Data;
 using Hardcodet.Wpf.TaskbarNotification;
 using KeyStats.Services;
 using KeyStats.ViewModels;
+using Microsoft.Extensions.Options;
+using PostHog;
 
 namespace KeyStats;
 
@@ -14,6 +18,8 @@ public partial class App : System.Windows.Application
     private TaskbarIcon? _trayIcon;
     private TrayIconViewModel? _trayIconViewModel;
     private System.Threading.Mutex? _singleInstanceMutex;
+    private string? _appVersion;
+    private IPostHogClient? _postHogClient;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -54,7 +60,9 @@ public partial class App : System.Windows.Application
 
             Console.WriteLine("Initializing services...");
             // Initialize services
-            _ = StatsManager.Instance;
+            var statsManager = StatsManager.Instance;
+            _appVersion = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0";
+            InitializeAnalytics(statsManager);
             InputMonitorService.Instance.StartMonitoring();
 
             Console.WriteLine("Creating tray icon...");
@@ -71,6 +79,7 @@ public partial class App : System.Windows.Application
             _trayIcon.TrayLeftMouseDown += (s, e) =>
             {
                 Console.WriteLine("TrayLeftMouseDown event fired - showing stats");
+                TrackClick("tray_icon");
                 Application.Current?.Dispatcher.Invoke(() =>
                 {
                     _trayIconViewModel?.ShowStats();
@@ -106,7 +115,11 @@ public partial class App : System.Windows.Application
         var menu = new System.Windows.Controls.ContextMenu();
 
         var showStatsItem = new System.Windows.Controls.MenuItem { Header = "显示统计" };
-        showStatsItem.Click += (s, e) => _trayIconViewModel?.ShowStatsCommand.Execute(null);
+        showStatsItem.Click += (s, e) =>
+        {
+            TrackClick("context_menu_show_stats");
+            _trayIconViewModel?.ShowStatsCommand.Execute(null);
+        };
         menu.Items.Add(showStatsItem);
 
         var startupItem = new System.Windows.Controls.MenuItem
@@ -118,6 +131,10 @@ public partial class App : System.Windows.Application
         startupItem.Click += (s, e) =>
         {
             var menuItem = (System.Windows.Controls.MenuItem)s!;
+            TrackClick("context_menu_startup", new Dictionary<string, object?>
+            {
+                ["enabled"] = menuItem.IsChecked
+            });
             try
             {
                 StartupManager.Instance.SetEnabled(menuItem.IsChecked);
@@ -133,7 +150,11 @@ public partial class App : System.Windows.Application
         menu.Items.Add(new System.Windows.Controls.Separator());
 
         var quitItem = new System.Windows.Controls.MenuItem { Header = "退出" };
-        quitItem.Click += (s, e) => _trayIconViewModel?.QuitCommand.Execute(null);
+        quitItem.Click += (s, e) =>
+        {
+            TrackClick("context_menu_quit");
+            _trayIconViewModel?.QuitCommand.Execute(null);
+        };
         menu.Items.Add(quitItem);
 
         return menu;
@@ -141,6 +162,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        TrackAnalyticsExit();
         _trayIconViewModel?.Cleanup();
         _trayIcon?.Dispose();
         InputMonitorService.Instance.StopMonitoring();
@@ -198,4 +220,193 @@ public partial class App : System.Windows.Application
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AllocConsole();
 #endif
+
+    private void InitializeAnalytics(StatsManager statsManager)
+    {
+        var settings = statsManager.Settings;
+        if (!settings.AnalyticsEnabled)
+        {
+            return;
+        }
+
+        var apiKey = settings.AnalyticsApiKey;
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return;
+        }
+
+        var host = string.IsNullOrWhiteSpace(settings.AnalyticsHost)
+            ? "https://app.posthog.com"
+            : settings.AnalyticsHost.TrimEnd('/');
+
+        var options = Options.Create(new PostHogOptions
+        {
+            ProjectApiKey = apiKey,
+            HostUrl = new Uri(host)
+        });
+        _postHogClient = new PostHogClient(options, null);
+
+        var updated = false;
+        if (string.IsNullOrWhiteSpace(settings.AnalyticsDistinctId))
+        {
+            settings.AnalyticsDistinctId = Guid.NewGuid().ToString("N");
+            updated = true;
+        }
+
+        if (settings.AnalyticsFirstOpenUtc == null)
+        {
+            settings.AnalyticsFirstOpenUtc = DateTime.UtcNow;
+            updated = true;
+        }
+
+        if (updated)
+        {
+            statsManager.SaveSettings();
+        }
+
+        if (!settings.AnalyticsInstallTracked)
+        {
+            CaptureEvent("app_install", statsManager, new Dictionary<string, object?>
+            {
+                ["install_utc"] = settings.AnalyticsFirstOpenUtc?.ToString("o")
+            });
+            settings.AnalyticsInstallTracked = true;
+            statsManager.SaveSettings();
+        }
+
+        CaptureEvent("app_open", statsManager, null);
+    }
+
+    private void CaptureEvent(string eventName, StatsManager statsManager, Dictionary<string, object?>? extraProperties)
+    {
+        if (_postHogClient == null)
+        {
+            return;
+        }
+
+        var distinctId = statsManager.Settings.AnalyticsDistinctId;
+        if (string.IsNullOrWhiteSpace(distinctId))
+        {
+            return;
+        }
+
+        var properties = BuildBaseProperties(statsManager.Settings);
+        if (extraProperties != null)
+        {
+            foreach (var (key, value) in extraProperties)
+            {
+                if (value != null)
+                {
+                    properties[key] = value;
+                }
+            }
+        }
+
+        _postHogClient.Capture(distinctId, eventName, properties);
+    }
+
+    private Dictionary<string, object> BuildBaseProperties(Models.AppSettings settings)
+    {
+        var appVersion = _appVersion ?? "0.0.0";
+        var properties = new Dictionary<string, object>
+        {
+            ["app_name"] = "KeyStats",
+            ["app_version"] = appVersion,
+            ["os"] = "Windows",
+            ["os_version"] = Environment.OSVersion.VersionString,
+            ["dotnet_version"] = Environment.Version.ToString(),
+            ["locale"] = CultureInfo.CurrentUICulture.Name
+        };
+
+        if (settings.AnalyticsFirstOpenUtc.HasValue)
+        {
+            properties["first_open_utc"] = settings.AnalyticsFirstOpenUtc.Value.ToString("o");
+        }
+
+        properties["$set_once"] = new Dictionary<string, object>
+        {
+            ["first_open_utc"] = settings.AnalyticsFirstOpenUtc?.ToString("o") ?? string.Empty,
+            ["install_utc"] = settings.AnalyticsFirstOpenUtc?.ToString("o") ?? string.Empty
+        };
+
+        return properties;
+    }
+
+    private void TrackAnalyticsExit()
+    {
+        if (_postHogClient == null)
+        {
+            return;
+        }
+
+        var statsManager = StatsManager.Instance;
+        CaptureEvent("app_exit", statsManager, null);
+
+        _postHogClient.Dispose();
+    }
+
+    /// <summary>
+    /// 追踪页面浏览事件
+    /// </summary>
+    public void TrackPageView(string pageName, Dictionary<string, object?>? extraProperties = null)
+    {
+        if (_postHogClient == null)
+        {
+            return;
+        }
+
+        var statsManager = StatsManager.Instance;
+        var properties = new Dictionary<string, object?>
+        {
+            ["page_name"] = pageName
+        };
+
+        if (extraProperties != null)
+        {
+            foreach (var (key, value) in extraProperties)
+            {
+                if (value != null)
+                {
+                    properties[key] = value;
+                }
+            }
+        }
+
+        CaptureEvent("pageview", statsManager, properties);
+    }
+
+    /// <summary>
+    /// 追踪点击事件
+    /// </summary>
+    public void TrackClick(string elementName, Dictionary<string, object?>? extraProperties = null)
+    {
+        if (_postHogClient == null)
+        {
+            return;
+        }
+
+        var statsManager = StatsManager.Instance;
+        var properties = new Dictionary<string, object?>
+        {
+            ["element_name"] = elementName
+        };
+
+        if (extraProperties != null)
+        {
+            foreach (var (key, value) in extraProperties)
+            {
+                if (value != null)
+                {
+                    properties[key] = value;
+                }
+            }
+        }
+
+        CaptureEvent("click", statsManager, properties);
+    }
+
+    /// <summary>
+    /// 获取 App 实例（用于其他类调用追踪方法）
+    /// </summary>
+    public static App? CurrentApp => Current as App;
 }
