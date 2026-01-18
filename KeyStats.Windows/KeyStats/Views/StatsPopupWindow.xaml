@@ -1,0 +1,169 @@
+<Window x:Class="KeyStats.Views.StatsPopupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:KeyStats.Views.Controls"
+        xmlns:viewmodels="clr-namespace:KeyStats.ViewModels"
+        Title="KeyStats"
+        Width="360"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        Deactivated="Window_Deactivated"
+        Opacity="0">
+    <Window.RenderTransform>
+        <TranslateTransform x:Name="WindowTransform"/>
+    </Window.RenderTransform>
+
+    <Window.DataContext>
+        <viewmodels:StatsPopupViewModel/>
+    </Window.DataContext>
+
+    <Border Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource DividerBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="2" Opacity="0.15" Direction="270"/>
+        </Border.Effect>
+
+        <StackPanel Margin="12">
+            <!-- Header -->
+            <TextBlock Text="今日统计" FontSize="14" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}" Margin="4,0,0,10"/>
+
+            <!-- Stats Cards -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,6">
+                <controls:StatItemControl Icon="&#xE765;" Title="按键次数" Value="{Binding KeyPresses}"/>
+            </Border>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource CardBorder}">
+                    <controls:StatItemControl Icon="&#xE8B0;" Title="左键点击" Value="{Binding LeftClicks}"/>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                    <controls:StatItemControl Icon="&#xE8B0;" Title="右键点击" Value="{Binding RightClicks}"/>
+                </Border>
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource CardBorder}">
+                    <controls:StatItemControl Icon="&#xE8AB;" Title="鼠标移动" Value="{Binding MouseDistance}"/>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                    <controls:StatItemControl Icon="&#xE74A;" Title="滚轮滚动" Value="{Binding ScrollDistance}"/>
+                </Border>
+            </Grid>
+
+            <!-- Key Breakdown -->
+            <TextBlock Text="按键分布" Style="{StaticResource SectionTitle}" Margin="4,8,0,6"/>
+            <Border Style="{StaticResource CardBorder}" Padding="8,6" Margin="0,0,0,6">
+                <controls:KeyBreakdownControl
+                    Column1Items="{Binding Column1Items}"
+                    Column2Items="{Binding Column2Items}"
+                    Column3Items="{Binding Column3Items}"/>
+            </Border>
+
+            <!-- History Header + Chart Style -->
+            <Grid Margin="4,6,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="历史记录" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center"/>
+                <Border Grid.Column="2" Background="{StaticResource SubtleFillBrush}" CornerRadius="4" Padding="2">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton GroupName="ChartStyle"
+                                     Style="{StaticResource SegmentedButton}" FontSize="10" Padding="6,3"
+                                     IsChecked="{Binding SelectedChartStyleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" FontSize="9" VerticalAlignment="Center"/>
+                                <TextBlock Text=" 折线" FontSize="10" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="ChartStyle"
+                                     Style="{StaticResource SegmentedButton}" FontSize="10" Padding="6,3"
+                                     IsChecked="{Binding SelectedChartStyleIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets" FontSize="9" VerticalAlignment="Center"/>
+                                <TextBlock Text=" 柱状" FontSize="10" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Range + Metric Selection Row -->
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Range -->
+                <Border Grid.Column="0" Background="{StaticResource SubtleFillBrush}" CornerRadius="5" Padding="3">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="7天" GroupName="Range"
+                                     Style="{StaticResource SegmentedButton}" FontSize="11" Padding="8,4"
+                                     IsChecked="{Binding SelectedRangeIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"/>
+                        <RadioButton Content="30天" GroupName="Range"
+                                     Style="{StaticResource SegmentedButton}" FontSize="11" Padding="8,4"
+                                     IsChecked="{Binding SelectedRangeIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Metrics -->
+                <Border Grid.Column="2" Background="{StaticResource SubtleFillBrush}" CornerRadius="5" Padding="3">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <RadioButton Grid.Column="0" Content="点击" GroupName="Metric"
+                                     Style="{StaticResource SegmentedButton}" FontSize="11" Padding="6,4"
+                                     IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}"/>
+                        <RadioButton Grid.Column="1" Content="按键" GroupName="Metric"
+                                     Style="{StaticResource SegmentedButton}" FontSize="11" Padding="6,4"
+                                     IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}"/>
+                        <RadioButton Grid.Column="2" Content="移动" GroupName="Metric"
+                                     Style="{StaticResource SegmentedButton}" FontSize="11" Padding="6,4"
+                                     IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}"/>
+                        <RadioButton Grid.Column="3" Content="滚动" GroupName="Metric"
+                                     Style="{StaticResource SegmentedButton}" FontSize="11" Padding="6,4"
+                                     IsChecked="{Binding SelectedMetricIndex, Converter={StaticResource IntToBoolConverter}, ConverterParameter=3}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Chart -->
+            <Border Style="{StaticResource CardBorder}" Padding="6" Margin="0,0,0,4">
+                <controls:StatsChartControl
+                    ChartData="{Binding ChartData}"
+                    ChartStyle="{Binding SelectedChartStyleIndex}"
+                    SelectedMetricIndex="{Binding SelectedMetricIndex}"
+                    Height="120"/>
+            </Border>
+
+            <!-- Summary -->
+            <TextBlock Text="{Binding HistorySummary}"
+                       Style="{StaticResource SecondaryText}" Margin="4,2,0,0"/>
+        </StackPanel>
+    </Border>
+</Window>
