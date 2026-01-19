@@ -1,10 +1,8 @@
-﻿# KeyStats Windows Build Script
-# Usage: .\build.ps1 [Release|Debug] [SelfContained|FrameworkDependent]
+# KeyStats Windows Build Script
+# Usage: .\build.ps1 [Release|Debug]
 
 param(
-    [string]$Configuration = "Release",
-    [string]$PublishType = "SelfContained",
-    [string]$Runtime = "win-x64"
+    [string]$Configuration = "Release"
 )
 
 # Set console output encoding to UTF-8
@@ -33,8 +31,7 @@ $DistDir = Join-Path $ScriptDir "dist"
 
 Write-Host "=== KeyStats Windows Build Script ===" -ForegroundColor Cyan
 Write-Host "Configuration: $Configuration" -ForegroundColor Yellow
-Write-Host "Publish Type: $PublishType" -ForegroundColor Yellow
-Write-Host "Runtime: $Runtime" -ForegroundColor Yellow
+Write-Host "Target Framework: .NET Framework 4.8" -ForegroundColor Yellow
 Write-Host ""
 
 # Check if project file exists
@@ -131,64 +128,26 @@ finally {
     Pop-Location
 }
 
-# Check target framework
-$ProjectContent = Get-Content $ProjectFile -Raw
-$IsNetFramework = $ProjectContent -match '<TargetFramework>net\d+</TargetFramework>' -and $ProjectContent -match '<TargetFramework>net48</TargetFramework>'
+# Build and publish project
+Write-Host "Building project..." -ForegroundColor Cyan
+Write-Host "Target Framework: .NET Framework 4.8 (运行时已预装在 Windows 10/11)" -ForegroundColor Yellow
+Write-Host "应用大小: 约 5-10 MB，开箱即用" -ForegroundColor Green
 
-# Publish project
-Write-Host "Publishing project..." -ForegroundColor Cyan
 Push-Location $ScriptDir
 try {
-    if ($IsNetFramework) {
-        # .NET Framework 4.8: 使用 build 而不是 publish（运行时已预装）
-        Write-Host "Target Framework: .NET Framework 4.8 (运行时已预装在 Windows 10/11)" -ForegroundColor Yellow
-        Write-Host "应用大小: 约 5-10 MB，开箱即用" -ForegroundColor Green
-        
-        dotnet build $ProjectFile -c $Configuration -o $OutputDir
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "Build failed!" -ForegroundColor Red
-            exit 1
-        }
-        
-        # 复制输出文件
-        $BinDir = Join-Path $ProjectDir "bin\$Configuration\net48"
-        if (Test-Path $BinDir) {
-            Copy-Item -Path "$BinDir\*" -Destination $OutputDir -Recurse -Force
-        }
-        
-        Write-Host "Build succeeded!" -ForegroundColor Green
-    } else {
-        # .NET 8: 使用 publish
-        $PublishArgs = @(
-            "publish",
-            $ProjectFile,
-            "-c", $Configuration,
-            "-r", $Runtime,
-            "-o", $OutputDir
-        )
-        
-        if ($PublishType -eq "SelfContained") {
-            $PublishArgs += "--self-contained", "true"
-            $PublishArgs += "-p:PublishSingleFile=true"
-            $PublishArgs += "-p:IncludeNativeLibrariesForSelfExtract=true"
-            $PublishArgs += "-p:EnableCompressionInSingleFile=true"
-            $PublishArgs += "-p:PublishTrimmed=false"
-            $PublishArgs += "-p:PublishReadyToRun=false"
-            Write-Host "Publish Type: Self-contained single file (with compression)" -ForegroundColor Yellow
-        } else {
-            $PublishArgs += "--self-contained", "false"
-            $PublishArgs += "-p:PublishTrimmed=false"
-            $PublishArgs += "-p:PublishReadyToRun=false"
-            Write-Host "Publish Type: Framework-dependent (requires .NET 8 Runtime)" -ForegroundColor Yellow
-        }
-        
-        dotnet @PublishArgs
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "Publish failed!" -ForegroundColor Red
-            exit 1
-        }
-        Write-Host "Publish succeeded!" -ForegroundColor Green
+    dotnet build $ProjectFile -c $Configuration -o $OutputDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Build failed!" -ForegroundColor Red
+        exit 1
     }
+    
+    # 复制输出文件
+    $BinDir = Join-Path $ProjectDir "bin\$Configuration\net48"
+    if (Test-Path $BinDir) {
+        Copy-Item -Path "$BinDir\*" -Destination $OutputDir -Recurse -Force
+    }
+    
+    Write-Host "Build succeeded!" -ForegroundColor Green
 }
 finally {
     Pop-Location
@@ -204,12 +163,8 @@ if (-not $Version) {
     $Version = "1.0.0"
 }
 
-# Determine zip name based on framework
-if ($IsNetFramework) {
-    $ZipName = "KeyStats-Windows-$Version-NetFramework48.zip"
-} else {
-    $ZipName = "KeyStats-Windows-$Version-$Runtime-$PublishType.zip"
-}
+# Determine zip name
+$ZipName = "KeyStats-Windows-$Version-NetFramework48.zip"
 $ZipPath = Join-Path $DistDir $ZipName
 
 # Copy files to temporary directory
@@ -220,44 +175,19 @@ Write-Host "Copying files..." -ForegroundColor Cyan
 Copy-Item -Path "$OutputDir\*" -Destination $TempDir -Recurse -Force
 
 # 创建 README
-if ($IsNetFramework) {
-    $RuntimeRequirement = "No .NET runtime installation required (uses pre-installed .NET Framework 4.8)"
-    $PublishType = "NetFramework48"
-} else {
-    $RuntimeRequirement = if ($PublishType -eq "SelfContained") { 
-        "No .NET runtime required" 
-    } else { 
-        ".NET 8.0 Runtime required" 
-    }
-}
-
 $ReadmeLines = @(
     "KeyStats for Windows",
     "Version: $Version",
-    "Runtime: $Runtime",
-    "Publish Type: $PublishType",
     "",
     "Installation:",
     "1. Extract this ZIP file to any directory",
-    "2. Run KeyStats.exe (or CheckRuntime.bat for runtime check)",
+    "2. Run KeyStats.exe",
     "3. Grant necessary permissions on first run",
+    "",
+    "Note: This version uses .NET Framework 4.8, which is pre-installed on Windows 10/11.",
+    "No additional installation required - ready to use!",
     ""
 )
-
-if ($IsNetFramework) {
-    $ReadmeLines += @(
-        "Note: This version uses .NET Framework 4.8, which is pre-installed on Windows 10/11.",
-        "No additional installation required - ready to use!",
-        ""
-    )
-} elseif ($PublishType -eq "FrameworkDependent") {
-    $ReadmeLines += @(
-        "Note: This version requires .NET 8.0 Desktop Runtime.",
-        "If runtime is not installed, use CheckRuntime.bat for friendly error message.",
-        "Download: https://dotnet.microsoft.com/download/dotnet/8.0",
-        ""
-    )
-}
 
 $ReadmeLines += @(
     "Data Storage:",
@@ -267,8 +197,8 @@ $ReadmeLines += @(
     "Simply delete the program folder. Data will remain in user data directory.",
     "",
     "System Requirements:",
-    "- Windows 10 or Windows 11",
-    "- $RuntimeRequirement"
+    "- Windows 10 (1903+) or Windows 11",
+    "- No .NET runtime installation required (uses pre-installed .NET Framework 4.8)"
 )
 
 $ReadmePath = Join-Path $TempDir "README.txt"

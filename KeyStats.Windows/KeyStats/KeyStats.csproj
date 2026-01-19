@@ -43,14 +43,5 @@
     <EmbeddedResource Include="Resources\Icons\tray-icon.png" />
   </ItemGroup>
 
-  <!-- 包含启动器脚本到发布输出（主要用于 FrameworkDependent 版本） -->
-  <ItemGroup>
-    <Content Include="CheckRuntime.bat">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="CheckRuntime.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
 
 </Project>
