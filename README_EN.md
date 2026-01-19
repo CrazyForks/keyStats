@@ -1,11 +1,11 @@
-# KeyStats - macOS Keyboard & Mouse Statistics Menu Bar App
+# KeyStats - macOS/Windows Keyboard & Mouse Statistics Menu Bar App
 
 English | [简体中文](./README.md)
 
 <img width="128" height="128" alt="ICON-iOS-Default-256x256@2x" src="https://github.com/user-attachments/assets/842780ed-c7a1-4c1b-a901-1f1d8babe51a" />
 
 
-KeyStats is a lightweight macOS native menu bar application that tracks daily keyboard keystrokes, mouse clicks, mouse movement distance, and scroll distance.
+KeyStats is a lightweight native menu bar application for macOS and Windows that tracks daily keyboard keystrokes, mouse clicks, mouse movement distance, and scroll distance.
 
 <img width="300" height="581" alt="image" src="https://github.com/user-attachments/assets/c5146f66-0aa3-49ce-9184-2c75301bf398" />
 
@@ -34,7 +34,7 @@ brew upgrade keystats
 
 [Download from GitHub Releases](https://github.com/debugtheworldbot/keyStats/releases) the Windows installer
 
-> **About .NET 8 Desktop Runtime:** If .NET 8 Desktop Runtime is not installed on your computer, a setup wizard will automatically appear when you first open the app - just follow the prompts. You can also [download and install it manually](https://dotnet.microsoft.com/download/dotnet/8.0) in advance.
+> **No dependencies required**: The Windows version uses .NET Framework 4.8, which is pre-installed on Windows 10 (1903+) and Windows 11 - ready to use out of the box. If your Windows 10 version is older (before 1903), you can upgrade your system or [manually install .NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48).
 
 ## Features
 
@@ -53,11 +53,13 @@ brew upgrade keystats
 - macOS 13.0 (Ventura) or higher
 
 ### Windows
-- Windows 10 or higher
-- **[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) must be installed first**
+- **Windows 10 (1903+) or Windows 11**
+- **No dependencies required**: Uses .NET Framework 4.8 (pre-installed on Windows 10/11, ready to use out of the box)
+- **App size**: ~5-10 MB (lightweight, no additional runtime needed)
 
-> **Why is .NET 8 Desktop Runtime required?**
-> The Windows version is built with WPF (Windows Presentation Foundation), Microsoft's official desktop application framework, which requires the .NET runtime environment to run. If .NET 8 Desktop Runtime is not installed on your computer, the application will not launch.
+> **Note**: If your Windows 10 version is older (before 1903), you can:
+> 1. Upgrade to Windows 10 1903 or higher (recommended)
+> 2. Or manually install .NET Framework 4.8: [Download link](https://dotnet.microsoft.com/download/dotnet-framework/net48)
 
 
 ## First Run Permission Setup
@@ -173,12 +175,13 @@ KeyStats.Windows/
 
 ### Windows
 
-- **Language**: C# 12
-- **Framework**: WPF (.NET 8)
+- **Language**: C# 10
+- **Framework**: WPF (.NET Framework 4.8)
 - **Architecture**: MVVM (Model-View-ViewModel)
 - **Event Monitoring**: Windows low-level keyboard/mouse hooks (SetWindowsHookEx)
 - **Data Storage**: Local persistence using JSON files
 - **UI Mode**: System tray application
+- **Advantages**: No runtime installation required, ready to use on Windows 10/11 out of the box, small app size (5-10 MB)
 
 ## Privacy Statement
 

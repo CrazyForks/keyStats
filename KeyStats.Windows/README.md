@@ -1,50 +1,82 @@
 # KeyStats for Windows
 
-A keyboard and mouse statistics tracker for Windows, ported from the macOS version.
+一个轻量级的键盘和鼠标统计工具，适用于 Windows 系统。从 macOS 版本移植而来。
 
-## Features
+## 功能特性
 
-- **Input Monitoring**: Tracks key presses, mouse clicks, mouse movement distance, and scroll distance
-- **System Tray Integration**: Runs in the system tray with a tooltip showing current stats
-- **Statistics Popup**: Click the tray icon to see detailed statistics
-- **Key Breakdown**: Shows the top 15 most pressed keys
-- **History Charts**: View historical data in line or bar chart format (week/month)
-- **Dynamic Icon Color**: Icon color changes based on typing speed (APM)
-- **Notifications**: Get notified when you reach milestones
-- **Startup with Windows**: Option to launch automatically at system startup
+- **输入监控**：追踪按键次数、鼠标点击、鼠标移动距离和滚动距离
+- **系统托盘集成**：在系统托盘运行，悬停显示当前统计
+- **统计弹窗**：点击托盘图标查看详细统计信息
+- **按键分析**：显示最常按的 15 个按键
+- **历史图表**：以折线图或柱状图查看历史数据（周/月）
+- **动态图标颜色**：根据输入速度（APM）改变图标颜色
+- **通知提醒**：达到里程碑时收到通知
+- **开机自启**：可选择在系统启动时自动运行
 
-## Requirements
+## 系统要求
 
-- Windows 10 (1903+) or Windows 11
-- **无需安装任何依赖**（使用 .NET Framework 4.8，Windows 10/11 已预装，开箱即用）
-- **应用大小：约 5-10 MB**（相比自包含版本的 100-120 MB 大幅减小）
+- **Windows 10 (1903+) 或 Windows 11**
+- **无需安装任何依赖**：使用 .NET Framework 4.8（Windows 10/11 已预装，开箱即用）
+- **应用大小**：约 5-10 MB（轻量级，无需额外运行时）
 
-## Building
+> **注意**：如果你的 Windows 10 版本较旧（早于 1903），可以：
+> 1. 升级到 Windows 10 1903 或更高版本（推荐）
+> 2. 或手动安装 .NET Framework 4.8：[下载链接](https://dotnet.microsoft.com/download/dotnet-framework/net48)
 
-### Prerequisites
+## 快速开始
 
-- Visual Studio 2019 or later with .NET desktop development workload
-- Or .NET SDK (支持 .NET Framework 4.8)
+### 下载与安装
 
-### Build with Visual Studio
+1. 从 [Releases](https://github.com/your-repo/releases) 下载最新版本的 `KeyStats-Windows-*-NetFramework48.zip`
+2. 解压到任意目录（例如 `C:\Program Files\KeyStats`）
+3. 运行 `KeyStats.exe` 即可开始使用
 
-1. Open `KeyStats.sln` in Visual Studio
-2. Build the solution (Ctrl+Shift+B)
-3. Run with F5 or from the bin folder
+### 首次使用
 
-### Build with Command Line
+1. **启动应用**：双击 `KeyStats.exe`，应用会在系统托盘显示图标
+2. **查看统计**：点击托盘图标查看详细统计信息
+3. **设置选项**：在统计窗口中可以：
+   - 开启/关闭托盘显示
+   - 设置通知阈值
+   - 启用动态图标颜色
+   - 设置开机自启
+
+### 数据存储
+
+应用数据存储在 `%LOCALAPPDATA%\KeyStats\` 目录：
+- `daily_stats.json` - 当日统计数据
+- `history.json` - 历史数据（保留 30 天）
+- `settings.json` - 用户设置
+
+卸载应用时，只需删除程序文件夹，数据会保留在用户数据目录中。
+
+## 开发者指南
+
+### 构建要求
+
+- Visual Studio 2019 或更高版本（包含 .NET 桌面开发工作负载）
+- 或 .NET SDK（支持 .NET Framework 4.8）
+
+### 使用 Visual Studio 构建
+
+1. 在 Visual Studio 中打开 `KeyStats.sln`
+2. 构建解决方案（Ctrl+Shift+B）
+3. 按 F5 运行，或从 bin 文件夹运行
+
+### 使用命令行构建
 
 ```bash
 cd KeyStats.Windows
-dotnet build
-dotnet run --project KeyStats
+dotnet build -c Release
 ```
 
-### Publish for Distribution
+输出文件位于 `bin/Release/net48/` 目录。
+
+### 打包发布
 
 #### 使用打包脚本（推荐）
 
-**方法 1：使用批处理文件（推荐，自动处理执行策略）**
+**方法 1：使用批处理文件（最简单）**
 
 ```cmd
 # 直接双击运行，或命令行执行
@@ -53,7 +85,7 @@ build.bat
 
 **方法 2：使用 PowerShell 脚本**
 
-如果直接运行 PowerShell 脚本遇到执行策略错误，可以使用以下方式：
+如果遇到执行策略错误，可以使用：
 
 ```powershell
 # 方式 A：使用 -ExecutionPolicy Bypass 参数
@@ -67,8 +99,6 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 build.bat
 ```
 
-**注意**：如果遇到 "无法加载文件，因为在此系统上禁止运行脚本" 的错误，请使用 `build.bat` 或上述方式 A/B。
-
 **参数说明：**
 - `Configuration`: `Release` 或 `Debug`（默认：Release）
 
@@ -76,42 +106,24 @@ build.bat
 - 发布文件：`publish/` 目录
 - 打包文件：`dist/KeyStats-Windows-<版本>-NetFramework48.zip`
 
-#### .NET Framework 4.8 方案优势
+#### 为什么选择 .NET Framework 4.8？
 
 | 特性 | .NET Framework 4.8 |
 |------|-------------------|
 | **文件大小** | ~5-10 MB ✅ |
-| **需要安装 .NET** | ❌ 不需要（Windows 10/11 已预装） |
+| **需要安装运行时** | ❌ 不需要（Windows 10/11 已预装） |
 | **安装难度** | 开箱即用 ✅ |
 | **启动速度** | 快速 ✅ |
 | **适用场景** | 所有用户 ✅ |
 | **推荐度** | ⭐⭐⭐⭐⭐ 强烈推荐 |
 
-**为什么选择 .NET Framework 4.8？**
+**优势：**
 - Windows 10 (1903+) 和 Windows 11 都预装了 .NET Framework 4.8
 - 应用本身只有 5-10 MB，无需打包运行时
 - 用户无需安装任何额外依赖，真正开箱即用
 - 性能优秀，启动快速
 
-**系统要求：**
-
-- Windows 10 (版本 1903 或更高) - 已预装 .NET Framework 4.8
-- Windows 11 - 已预装 .NET Framework 4.8
-
-如果你的 Windows 10 版本较旧（早于 1903），可以：
-1. 升级到 Windows 10 1903 或更高版本（推荐）
-2. 或手动安装 .NET Framework 4.8：https://dotnet.microsoft.com/download/dotnet-framework/net48
-
-#### 手动构建
-
-```bash
-# .NET Framework 4.8 版本（推荐）
-dotnet build -c Release
-
-# 输出在 bin/Release/net48/ 目录
-```
-
-## Project Structure
+## 项目结构
 
 ```
 KeyStats.Windows/
@@ -145,43 +157,51 @@ KeyStats.Windows/
 │       └── Converters.cs                 # XAML value converters
 ```
 
-## Data Storage
 
-Data is stored in `%LOCALAPPDATA%\KeyStats\`:
-- `daily_stats.json` - Current day's statistics
-- `history.json` - Historical data (30 days)
-- `settings.json` - User preferences
+## 技术说明
 
-## Technical Notes
+### 输入监控
 
-### Input Monitoring
+使用 Windows 底层钩子（`SetWindowsHookEx`）：
+- `WH_KEYBOARD_LL` - 键盘事件
+- `WH_MOUSE_LL` - 鼠标事件
 
-Uses low-level Windows hooks (`SetWindowsHookEx`) with:
-- `WH_KEYBOARD_LL` for keyboard events
-- `WH_MOUSE_LL` for mouse events
+鼠标移动以 30 FPS 采样，避免过度占用 CPU。
+超过 500 像素的跳跃会被过滤（例如鼠标突然移动）。
 
-Mouse movement is sampled at 30 FPS to avoid excessive CPU usage.
-Jumps greater than 500 pixels are filtered out (e.g., when mouse teleports).
+### 动态图标颜色（APM）
 
-### Dynamic Icon Color (APM)
+托盘图标颜色根据输入速度变化：
+- 无颜色：< 80 APM
+- 浅绿到绿色：80-160 APM
+- 黄色到红色：160-240+ APM
 
-The tray icon color changes based on typing speed:
-- No color: < 80 APM
-- Light green to green: 80-160 APM
-- Yellow to red: 160-240+ APM
+APM 使用 3 秒滑动窗口和 0.5 秒时间桶计算。
 
-APM is calculated using a 3-second sliding window with 0.5-second buckets.
+## 与 macOS 版本的差异
 
-## Differences from macOS Version
+| 方面 | macOS | Windows |
+|------|-------|---------|
+| 权限 | 需要辅助功能权限 | 无需特殊权限 |
+| 托盘显示 | 显示文本 + 图标 | 仅图标（文本在工具提示中） |
+| 弹窗行为 | NSPopover 锚定到菜单栏 | 无边框窗口靠近托盘 |
+| 钩子机制 | CGEvent tap | SetWindowsHookEx |
+| 开机自启 | SMAppService | 注册表 Run 键 |
 
-| Aspect | macOS | Windows |
-|--------|-------|---------|
-| Permissions | Accessibility permission required | No special permissions |
-| Tray display | Shows text + icon | Icon only (text in tooltip) |
-| Popup behavior | NSPopover anchored to menu bar | Borderless window near tray |
-| Hook mechanism | CGEvent tap | SetWindowsHookEx |
-| Startup | SMAppService | Registry Run key |
+## 常见问题
 
-## License
+### Q: 应用无法启动？
+A: 确保你的 Windows 版本是 10 (1903+) 或 11。如果版本较旧，请升级系统或手动安装 .NET Framework 4.8。
 
-Same license as the macOS KeyStats application.
+### Q: 统计数据丢失了？
+A: 数据存储在 `%LOCALAPPDATA%\KeyStats\`。如果数据丢失，检查该目录下的文件是否存在。
+
+### Q: 如何卸载？
+A: 直接删除程序文件夹即可。数据会保留在用户数据目录中，如需完全清除，可手动删除 `%LOCALAPPDATA%\KeyStats\` 目录。
+
+### Q: 支持哪些 Windows 版本？
+A: Windows 10 (1903+) 和 Windows 11。更早的版本需要手动安装 .NET Framework 4.8。
+
+## 许可证
+
+与 macOS KeyStats 应用使用相同的许可证。

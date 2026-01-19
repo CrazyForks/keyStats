@@ -41,7 +41,7 @@ brew upgrade keystats
 
 [从 GitHub Release 下载](https://github.com/debugtheworldbot/keyStats/releases) Windows 版本安装包
 
-> **关于 .NET 8 Desktop Runtime：** 如果你的电脑尚未安装 .NET 8 Desktop Runtime，首次打开应用时会自动弹出安装引导，按提示操作即可。你也可以提前[手动下载安装](https://dotnet.microsoft.com/download/dotnet/8.0)。
+> **无需安装任何依赖**：Windows 版本使用 .NET Framework 4.8，Windows 10 (1903+) 和 Windows 11 已预装，开箱即用。如果你的 Windows 10 版本较旧（早于 1903），可以升级系统或[手动安装 .NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48)。
 
 ## 功能特性
 
@@ -60,11 +60,13 @@ brew upgrade keystats
 - macOS 13.0 (Ventura) 或更高版本
 
 ### Windows
-- Windows 10 或更高版本
-- **需要先安装 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)**
+- **Windows 10 (1903+) 或 Windows 11**
+- **无需安装任何依赖**：使用 .NET Framework 4.8（Windows 10/11 已预装，开箱即用）
+- **应用大小**：约 5-10 MB（轻量级，无需额外运行时）
 
-> **为什么需要 .NET 8 Desktop Runtime？**
-> Windows 版本使用 WPF (Windows Presentation Foundation) 框架开发，这是微软官方的桌面应用开发框架，需要 .NET 运行时环境才能运行。如果你的电脑上没有安装 .NET 8 Desktop Runtime，应用将无法启动。
+> **注意**：如果你的 Windows 10 版本较旧（早于 1903），可以：
+> 1. 升级到 Windows 10 1903 或更高版本（推荐）
+> 2. 或手动安装 .NET Framework 4.8：[下载链接](https://dotnet.microsoft.com/download/dotnet-framework/net48)
 
 
 ## 首次运行权限设置
@@ -180,12 +182,13 @@ KeyStats.Windows/
 
 ### Windows
 
-- **语言**：C# 12
-- **框架**：WPF (.NET 8)
+- **语言**：C# 10
+- **框架**：WPF (.NET Framework 4.8)
 - **架构模式**：MVVM (Model-View-ViewModel)
 - **事件监听**：使用 Windows 低级键盘/鼠标钩子 (SetWindowsHookEx)
 - **数据存储**：使用 JSON 文件进行本地持久化
 - **UI 模式**：系统托盘应用
+- **优势**：无需安装运行时，Windows 10/11 开箱即用，应用体积小（5-10 MB）
 
 ## 隐私说明
 
