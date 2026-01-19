@@ -18,7 +18,9 @@ KeyStats 是一款轻量级的 macOS/Windows 原生菜单栏应用，用于统�
 
 ## 安装与使用
 
-### 方式一：使用 Homebrew 安装
+### macOS
+
+#### 方式一：使用 Homebrew 安装
 
 ```bash
 # 订阅 tap
@@ -33,7 +35,13 @@ brew install keystats
 brew upgrade keystats
 ```
 
-### 方式二：[从 GitHub Release 下载](https://github.com/debugtheworldbot/keyStats/releases)
+#### 方式二：[从 GitHub Release 下载](https://github.com/debugtheworldbot/keyStats/releases)
+
+### Windows
+
+[从 GitHub Release 下载](https://github.com/debugtheworldbot/keyStats/releases) Windows 版本安装包
+
+> **关于 .NET 8 Desktop Runtime：** 如果你的电脑尚未安装 .NET 8 Desktop Runtime，首次打开应用时会自动弹出安装引导，按提示操作即可。你也可以提前[手动下载安装](https://dotnet.microsoft.com/download/dotnet/8.0)。
 
 ## 功能特性
 
@@ -61,6 +69,8 @@ brew upgrade keystats
 
 ## 首次运行权限设置
 
+### macOS
+
 KeyStats 需要**辅助功能权限**才能监听键盘和鼠标事件。首次运行时：
 
 1. 应用会弹出权限请求对话框
@@ -71,7 +81,13 @@ KeyStats 需要**辅助功能权限**才能监听键盘和鼠标事件。首次�
 
 > **注意**：如果没有授予权限，应用将无法统计任何数据。
 >
-> **重新安装/升级app提示**：由于应用未进行签名，每次重新安装后 macOS 不会自动更新辅助功能授权。请先在“隐私与安全性”>“辅助功能”中移除 KeyStats 的旧授权，再回到应用点击“获取权限”按钮重新授权即可。
+> **重新安装/升级app提示**：由于应用未进行签名，每次重新安装后 macOS 不会自动更新辅助功能授权。请先在"隐私与安全性">"辅助功能"中移除 KeyStats 的旧授权，再回到应用点击"获取权限"按钮重新授权即可。
+
+### Windows
+
+Windows 版本**无需额外权限设置**，应用启动后会自动开始统计。
+
+> **注意**：首次启动时，Windows 可能会弹出安全警告，点击"仍要运行"即可。
 
 ## 使用说明
 
@@ -110,6 +126,8 @@ KeyStats 需要**辅助功能权限**才能监听键盘和鼠标事件。首次�
 
 ## 项目结构
 
+### macOS
+
 ```
 KeyStats/
 ├── KeyStats.xcodeproj/     # Xcode 项目文件
@@ -126,13 +144,48 @@ KeyStats/
 └── README.md
 ```
 
+### Windows
+
+```
+KeyStats.Windows/
+├── KeyStats.sln                    # Visual Studio 解决方案文件
+├── KeyStats/
+│   ├── App.xaml                    # 应用入口定义
+│   ├── App.xaml.cs                 # 应用入口逻辑
+│   ├── Services/
+│   │   ├── InputMonitorService.cs  # 输入事件监听服务
+│   │   ├── StatsManager.cs         # 统计数据管理
+│   │   ├── NotificationService.cs  # 通知服务
+│   │   └── StartupManager.cs       # 开机启动管理
+│   ├── ViewModels/
+│   │   ├── TrayIconViewModel.cs    # 托盘图标视图模型
+│   │   └── StatsPopupViewModel.cs  # 统计面板视图模型
+│   ├── Views/
+│   │   └── StatsPopupWindow.xaml   # 统计面板界面
+│   ├── Models/                     # 数据模型
+│   ├── Helpers/                    # 工具类
+│   └── Resources/                  # 资源文件
+└── build.ps1                       # 构建脚本
+```
+
 ## 技术实现
+
+### macOS
 
 - **语言**：Swift 5.0
 - **框架**：AppKit, CoreGraphics
 - **事件监听**：使用 `CGEvent.tapCreate` 创建全局事件监听器
 - **数据存储**：使用 `UserDefaults` 进行本地持久化
 - **UI 模式**：纯菜单栏应用（LSUIElement = true）
+
+### Windows
+
+- **语言**：C# 12
+- **框架**：WPF (.NET 8)
+- **架构模式**：MVVM (Model-View-ViewModel)
+- **事件监听**：使用 Windows 低级键盘/鼠标钩子 (SetWindowsHookEx)
+- **数据存储**：使用 JSON 文件进行本地持久化
+- **UI 模式**：系统托盘应用
 
 ## 隐私说明
 

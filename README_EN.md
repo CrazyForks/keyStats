@@ -11,7 +11,9 @@ KeyStats is a lightweight macOS native menu bar application that tracks daily ke
 
 ## Installation & Usage
 
-### Option 1: Install via Homebrew
+### macOS
+
+#### Option 1: Install via Homebrew
 
 ```bash
 # Tap the repository
@@ -26,7 +28,13 @@ Update the app:
 brew upgrade keystats
 ```
 
-### Option 2: [Download from GitHub Releases](https://github.com/debugtheworldbot/keyStats/releases)
+#### Option 2: [Download from GitHub Releases](https://github.com/debugtheworldbot/keyStats/releases)
+
+### Windows
+
+[Download from GitHub Releases](https://github.com/debugtheworldbot/keyStats/releases) the Windows installer
+
+> **About .NET 8 Desktop Runtime:** If .NET 8 Desktop Runtime is not installed on your computer, a setup wizard will automatically appear when you first open the app - just follow the prompts. You can also [download and install it manually](https://dotnet.microsoft.com/download/dotnet/8.0) in advance.
 
 ## Features
 
@@ -54,6 +62,8 @@ brew upgrade keystats
 
 ## First Run Permission Setup
 
+### macOS
+
 KeyStats requires **Accessibility permissions** to monitor keyboard and mouse events. On first run:
 
 1. The app will prompt a permission request dialog
@@ -65,6 +75,12 @@ KeyStats requires **Accessibility permissions** to monitor keyboard and mouse ev
 > **Note**: Without granting permissions, the app will not be able to track any data.
 >
 > **Reinstall/upgrade tip**: Because the app is not signed, macOS will not automatically update Accessibility authorization after each reinstall. Remove the existing KeyStats entry in "Privacy & Security" > "Accessibility", then return to the app and click the "Get Permission" button to request access again.
+
+### Windows
+
+The Windows version **requires no additional permission setup**. The app will automatically start tracking once launched.
+
+> **Note**: On first launch, Windows may show a security warning. Click "Run anyway" to proceed.
 
 ## Usage Instructions
 
@@ -103,6 +119,8 @@ Clicking the menu bar icon opens the detailed statistics panel, showing:
 
 ## Project Structure
 
+### macOS
+
 ```
 KeyStats/
 ├── KeyStats.xcodeproj/     # Xcode project files
@@ -119,13 +137,48 @@ KeyStats/
 └── README.md
 ```
 
+### Windows
+
+```
+KeyStats.Windows/
+├── KeyStats.sln                    # Visual Studio solution file
+├── KeyStats/
+│   ├── App.xaml                    # Application entry definition
+│   ├── App.xaml.cs                 # Application entry logic
+│   ├── Services/
+│   │   ├── InputMonitorService.cs  # Input event monitor service
+│   │   ├── StatsManager.cs         # Statistics data manager
+│   │   ├── NotificationService.cs  # Notification service
+│   │   └── StartupManager.cs       # Startup management
+│   ├── ViewModels/
+│   │   ├── TrayIconViewModel.cs    # Tray icon view model
+│   │   └── StatsPopupViewModel.cs  # Stats popup view model
+│   ├── Views/
+│   │   └── StatsPopupWindow.xaml   # Stats popup window
+│   ├── Models/                     # Data models
+│   ├── Helpers/                    # Utility classes
+│   └── Resources/                  # Resource files
+└── build.ps1                       # Build script
+```
+
 ## Technical Implementation
+
+### macOS
 
 - **Language**: Swift 5.0
 - **Frameworks**: AppKit, CoreGraphics
 - **Event Monitoring**: Global event listener using `CGEvent.tapCreate`
 - **Data Storage**: Local persistence using `UserDefaults`
 - **UI Mode**: Pure menu bar application (LSUIElement = true)
+
+### Windows
+
+- **Language**: C# 12
+- **Framework**: WPF (.NET 8)
+- **Architecture**: MVVM (Model-View-ViewModel)
+- **Event Monitoring**: Windows low-level keyboard/mouse hooks (SetWindowsHookEx)
+- **Data Storage**: Local persistence using JSON files
+- **UI Mode**: System tray application
 
 ## Privacy Statement
 
