@@ -108,8 +108,12 @@ class InputMonitor {
         
         switch type {
         case .keyDown:
-            let keyName = keyName(for: event)
-            statsManager.incrementKeyPresses(keyName: keyName)
+            // 忽略自动重复的按键（按住不放产生的重复事件）
+            let isAutoRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+            if !isAutoRepeat {
+                let keyName = keyName(for: event)
+                statsManager.incrementKeyPresses(keyName: keyName)
+            }
             
         case .leftMouseDown:
             statsManager.incrementLeftClicks()
