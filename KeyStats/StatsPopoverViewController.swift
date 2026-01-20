@@ -257,6 +257,10 @@ class StatsPopoverViewController: NSViewController {
             hoverButton.padding = 4
             hoverButton.cornerRadius = 6
         }
+        NSLayoutConstraint.activate([
+            settingsButton.widthAnchor.constraint(equalToConstant: 28),
+            settingsButton.heightAnchor.constraint(equalToConstant: 28)
+        ])
 
         allTimeStatsButton = makeSymbolButton(systemName: "chart.bar.xaxis",
                                               fallbackTitle: NSLocalizedString("allTimeStats.button", comment: ""),
@@ -272,6 +276,10 @@ class StatsPopoverViewController: NSViewController {
             hoverButton.padding = 4
             hoverButton.cornerRadius = 6
         }
+        NSLayoutConstraint.activate([
+            allTimeStatsButton.widthAnchor.constraint(equalToConstant: 28),
+            allTimeStatsButton.heightAnchor.constraint(equalToConstant: 28)
+        ])
 
         let footerStack = NSStackView()
         footerStack.orientation = .horizontal
@@ -288,6 +296,7 @@ class StatsPopoverViewController: NSViewController {
 
         footerStack.addArrangedSubview(settingsButton)
         footerStack.addArrangedSubview(allTimeStatsButton)
+        footerStack.setCustomSpacing(6, after: settingsButton)
         footerStack.addArrangedSubview(footerSpacer)
         footerStack.addArrangedSubview(buttonStack)
 
