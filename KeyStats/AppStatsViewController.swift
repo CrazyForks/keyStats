@@ -14,13 +14,12 @@ final class AppStatsViewController: NSViewController {
     private var statsUpdateToken: UUID?
     private var pendingRefresh = false
     private var sortMetric: SortMetric = .keys
-    private var columnWidths = AppStatsColumnWidths(
-        app: AppStatsLayout.appColumnWidth,
-        keys: AppStatsLayout.keysColumnWidth,
-        clicks: AppStatsLayout.clicksColumnWidth,
-        scroll: AppStatsLayout.scrollColumnWidth
-    )
-    private let columnWidthsDefaultsKey = "appStats.columnWidths"
+    private var appIconCache: [String: NSImage] = [:]
+    private lazy var defaultAppIcon: NSImage = {
+        let icon = NSWorkspace.shared.icon(forFileType: "app")
+        icon.size = NSSize(width: AppStatsLayout.appIconSize, height: AppStatsLayout.appIconSize)
+        return icon
+    }()
 
     private lazy var numberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -39,7 +38,6 @@ final class AppStatsViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadPersistedColumnWidths()
         setupUI()
         refreshData()
     }
@@ -158,11 +156,7 @@ final class AppStatsViewController: NSViewController {
         listHeaderView.sortMetricHandler = { [weak self] metric in
             self?.updateSortMetric(metric)
         }
-        listHeaderView.columnResizeHandler = { [weak self] divider, delta in
-            self?.resizeColumn(divider: divider, delta: delta)
-        }
         listHeaderView.updateSortIndicator(selectedMetric: sortMetric)
-        listHeaderView.applyColumnWidths(columnWidths)
         containerStack.addArrangedSubview(listHeaderView)
         listHeaderView.widthAnchor.constraint(equalTo: containerStack.widthAnchor, constant: -56).isActive = true
         containerStack.setCustomSpacing(0, after: listHeaderView)
@@ -233,14 +227,12 @@ final class AppStatsViewController: NSViewController {
         listHeaderView.isHidden = false
         emptyStateLabel.isHidden = true
 
-        for item in items {
+        for (index, item) in items.enumerated() {
             let row = AppStatsRowView()
-            row.columnResizeHandler = { [weak self] divider, delta in
-                self?.resizeColumn(divider: divider, delta: delta)
-            }
-            row.applyColumnWidths(columnWidths)
+            row.applyAlternatingBackground(isEvenRow: index.isMultiple(of: 2))
             row.update(
                 name: displayName(for: item),
+                icon: appIcon(for: item.bundleId),
                 keyPresses: formatNumber(item.keyPresses),
                 clicks: formatNumber(item.totalClicks),
                 scroll: formatScrollDistance(item.scrollDistance)
@@ -291,96 +283,21 @@ final class AppStatsViewController: NSViewController {
         return String(format: "%.0f px", distance)
     }
 
-    // MARK: - Column Layout
-
-    private func resizeColumn(divider: AppStatsColumnDivider, delta: CGFloat) {
-        guard delta != 0 else { return }
-        switch divider {
-        case .appKeys:
-            let clamped = clampedDelta(
-                delta,
-                leftWidth: columnWidths.app,
-                leftMin: AppStatsLayout.minAppColumnWidth,
-                rightWidth: columnWidths.keys,
-                rightMin: AppStatsLayout.minKeysColumnWidth
-            )
-            guard clamped != 0 else { return }
-            columnWidths.app += clamped
-            columnWidths.keys -= clamped
-        case .keysClicks:
-            let clamped = clampedDelta(
-                delta,
-                leftWidth: columnWidths.keys,
-                leftMin: AppStatsLayout.minKeysColumnWidth,
-                rightWidth: columnWidths.clicks,
-                rightMin: AppStatsLayout.minClicksColumnWidth
-            )
-            guard clamped != 0 else { return }
-            columnWidths.keys += clamped
-            columnWidths.clicks -= clamped
-        case .clicksScroll:
-            let clamped = clampedDelta(
-                delta,
-                leftWidth: columnWidths.clicks,
-                leftMin: AppStatsLayout.minClicksColumnWidth,
-                rightWidth: columnWidths.scroll,
-                rightMin: AppStatsLayout.minScrollColumnWidth
-            )
-            guard clamped != 0 else { return }
-            columnWidths.clicks += clamped
-            columnWidths.scroll -= clamped
+    private func appIcon(for bundleId: String) -> NSImage {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let cached = appIconCache[trimmed], cached.size != .zero {
+            return cached
         }
-        applyColumnWidths()
-        saveColumnWidths()
-    }
-
-    private func clampedDelta(
-        _ delta: CGFloat,
-        leftWidth: CGFloat,
-        leftMin: CGFloat,
-        rightWidth: CGFloat,
-        rightMin: CGFloat
-    ) -> CGFloat {
-        let maxIncrease = rightWidth - rightMin
-        let maxDecrease = leftWidth - leftMin
-        return min(max(delta, -maxDecrease), maxIncrease)
-    }
-
-    private func applyColumnWidths() {
-        listHeaderView.applyColumnWidths(columnWidths)
-        for case let row as AppStatsRowView in listStack.arrangedSubviews {
-            row.applyColumnWidths(columnWidths)
+        let icon: NSImage
+        if !trimmed.isEmpty, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmed) {
+            let workspaceIcon = NSWorkspace.shared.icon(forFile: url.path)
+            icon = (workspaceIcon.copy() as? NSImage) ?? workspaceIcon
+        } else {
+            icon = (defaultAppIcon.copy() as? NSImage) ?? defaultAppIcon
         }
-        view.layoutSubtreeIfNeeded()
-    }
-
-    private func loadPersistedColumnWidths() {
-        guard let saved = UserDefaults.standard.dictionary(forKey: columnWidthsDefaultsKey) as? [String: Double] else {
-            return
-        }
-        columnWidths = AppStatsColumnWidths(
-            app: validatedWidth(saved["app"], min: AppStatsLayout.minAppColumnWidth, fallback: AppStatsLayout.appColumnWidth),
-            keys: validatedWidth(saved["keys"], min: AppStatsLayout.minKeysColumnWidth, fallback: AppStatsLayout.keysColumnWidth),
-            clicks: validatedWidth(saved["clicks"], min: AppStatsLayout.minClicksColumnWidth, fallback: AppStatsLayout.clicksColumnWidth),
-            scroll: validatedWidth(saved["scroll"], min: AppStatsLayout.minScrollColumnWidth, fallback: AppStatsLayout.scrollColumnWidth)
-        )
-    }
-
-    private func saveColumnWidths() {
-        let payload: [String: Double] = [
-            "app": Double(columnWidths.app),
-            "keys": Double(columnWidths.keys),
-            "clicks": Double(columnWidths.clicks),
-            "scroll": Double(columnWidths.scroll)
-        ]
-        UserDefaults.standard.set(payload, forKey: columnWidthsDefaultsKey)
-    }
-
-    private func validatedWidth(_ value: Double?, min: CGFloat, fallback: CGFloat) -> CGFloat {
-        guard let value = value else { return fallback }
-        let width = CGFloat(value)
-        guard width.isFinite else { return fallback }
-        return max(min, width)
+        icon.size = NSSize(width: AppStatsLayout.appIconSize, height: AppStatsLayout.appIconSize)
+        appIconCache[trimmed] = icon
+        return icon
     }
 
     // MARK: - Updates
@@ -439,19 +356,6 @@ private enum SortMetric {
     case scroll
 }
 
-private struct AppStatsColumnWidths {
-    var app: CGFloat
-    var keys: CGFloat
-    var clicks: CGFloat
-    var scroll: CGFloat
-}
-
-private enum AppStatsColumnDivider {
-    case appKeys
-    case keysClicks
-    case clicksScroll
-}
-
 private final class FlippedView: NSView {
     override var isFlipped: Bool {
         return true
@@ -459,21 +363,18 @@ private final class FlippedView: NSView {
 }
 
 private enum AppStatsLayout {
-    static let appColumnWidth: CGFloat = 220
-    static let keysColumnWidth: CGFloat = 80
-    static let clicksColumnWidth: CGFloat = 80
-    static let scrollColumnWidth: CGFloat = 90
+    static let appColumnMaxWidth: CGFloat = 220
+    static let metricColumnWidth: CGFloat = 80
     static let columnSpacing: CGFloat = 12
     static let rowHeight: CGFloat = 32
+    static let rowCornerRadius: CGFloat = 8
     static let headerHeight: CGFloat = 20
-    static let nameColumnHeight: CGFloat = 22
-    static let minAppColumnWidth: CGFloat = 140
-    static let minKeysColumnWidth: CGFloat = 60
-    static let minClicksColumnWidth: CGFloat = 60
-    static let minScrollColumnWidth: CGFloat = 70
     static let dividerThickness: CGFloat = 1
     static let dividerHitWidth: CGFloat = 6
     static let dividerVerticalInset: CGFloat = 0
+    static let appIconSize: CGFloat = 16
+    static let appIconSpacing: CGFloat = 6
+    static let appIconLeadingInset: CGFloat = 6
 }
 
 private final class SortableHeaderLabel: NSTextField {
@@ -516,17 +417,14 @@ private final class SortableHeaderLabel: NSTextField {
 
 private final class AppStatsHeaderRowView: NSView {
     private let sortIndicator = NSLocalizedString("appStats.sortIndicator", comment: "")
+    private var nameStack: NSStackView!
+    private var nameSpacer: NSView!
     private var nameLabel: NSTextField!
     private var keysLabel: SortableHeaderLabel!
     private var clicksLabel: SortableHeaderLabel!
     private var scrollLabel: SortableHeaderLabel!
-    private var nameWidthConstraint: NSLayoutConstraint!
-    private var keysWidthConstraint: NSLayoutConstraint!
-    private var clicksWidthConstraint: NSLayoutConstraint!
-    private var scrollWidthConstraint: NSLayoutConstraint!
 
     var sortMetricHandler: ((SortMetric) -> Void)?
-    var columnResizeHandler: ((AppStatsColumnDivider, CGFloat) -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -546,7 +444,15 @@ private final class AppStatsHeaderRowView: NSView {
         clicksLabel = makeSortableHeaderLabel(text: NSLocalizedString("appStats.column.clicks", comment: ""), metric: .clicks)
         scrollLabel = makeSortableHeaderLabel(text: NSLocalizedString("appStats.column.scroll", comment: ""), metric: .scroll)
 
-        let stack = NSStackView(views: [nameLabel, keysLabel, clicksLabel, scrollLabel])
+        nameSpacer = NSView()
+        nameStack = NSStackView(views: [nameSpacer, nameLabel])
+        nameStack.orientation = .horizontal
+        nameStack.alignment = .centerY
+        nameStack.spacing = AppStatsLayout.appIconSpacing
+        nameStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        nameStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let stack = NSStackView(views: [nameStack, keysLabel, clicksLabel, scrollLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = AppStatsLayout.columnSpacing
@@ -559,20 +465,19 @@ private final class AppStatsHeaderRowView: NSView {
             stack.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
 
-        nameWidthConstraint = nameLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.appColumnWidth)
-        keysWidthConstraint = keysLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.keysColumnWidth)
-        clicksWidthConstraint = clicksLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.clicksColumnWidth)
-        scrollWidthConstraint = scrollLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.scrollColumnWidth)
         NSLayoutConstraint.activate([
-            nameWidthConstraint,
-            keysWidthConstraint,
-            clicksWidthConstraint,
-            scrollWidthConstraint
+            nameStack.widthAnchor.constraint(equalToConstant: AppStatsLayout.appColumnMaxWidth),
+            keysLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
+            clicksLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
+            scrollLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth)
+        ])
+        NSLayoutConstraint.activate([
+            nameSpacer.widthAnchor.constraint(equalToConstant: AppStatsLayout.appIconSize)
         ])
 
-        addDividerView(after: nameLabel, divider: .appKeys)
-        addDividerView(after: keysLabel, divider: .keysClicks)
-        addDividerView(after: clicksLabel, divider: .clicksScroll)
+        addDividerView(after: nameStack)
+        addDividerView(after: keysLabel)
+        addDividerView(after: clicksLabel)
     }
 
     func updateSortIndicator(selectedMetric: SortMetric) {
@@ -580,13 +485,6 @@ private final class AppStatsHeaderRowView: NSView {
         keysLabel.updateIndicator(selectedMetric == .keys ? indicator : nil)
         clicksLabel.updateIndicator(selectedMetric == .clicks ? indicator : nil)
         scrollLabel.updateIndicator(selectedMetric == .scroll ? indicator : nil)
-    }
-
-    func applyColumnWidths(_ widths: AppStatsColumnWidths) {
-        nameWidthConstraint.constant = widths.app
-        keysWidthConstraint.constant = widths.keys
-        clicksWidthConstraint.constant = widths.clicks
-        scrollWidthConstraint.constant = widths.scroll
     }
 
     private func makeHeaderLabel(text: String, isNameColumn: Bool) -> NSTextField {
@@ -607,7 +505,7 @@ private final class AppStatsHeaderRowView: NSView {
     private func configureHeaderLabel(_ label: NSTextField, isNameColumn: Bool) {
         label.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         label.textColor = .secondaryLabelColor
-        label.alignment = isNameColumn ? .left : .right
+        label.alignment = isNameColumn ? .left : .center
         if isNameColumn {
             label.setContentHuggingPriority(.defaultLow, for: .horizontal)
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -617,11 +515,8 @@ private final class AppStatsHeaderRowView: NSView {
         }
     }
 
-    private func addDividerView(after view: NSView, divider: AppStatsColumnDivider) {
+    private func addDividerView(after view: NSView) {
         let dividerView = AppStatsColumnDividerView()
-        dividerView.onDrag = { [weak self] delta in
-            self?.columnResizeHandler?(divider, delta)
-        }
         dividerView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(dividerView)
         NSLayoutConstraint.activate([
@@ -637,18 +532,12 @@ private final class AppStatsHeaderRowView: NSView {
 }
 
 private final class AppStatsRowView: NSView {
-    private var nameScrollView: NSScrollView!
-    private var nameContainer: NSView!
+    private var nameStack: NSStackView!
+    private var iconView: NSImageView!
     private var nameLabel: NSTextField!
     private var keysLabel: NSTextField!
     private var clicksLabel: NSTextField!
     private var scrollLabel: NSTextField!
-    private var nameWidthConstraint: NSLayoutConstraint!
-    private var keysWidthConstraint: NSLayoutConstraint!
-    private var clicksWidthConstraint: NSLayoutConstraint!
-    private var scrollWidthConstraint: NSLayoutConstraint!
-
-    var columnResizeHandler: ((AppStatsColumnDivider, CGFloat) -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -663,36 +552,38 @@ private final class AppStatsRowView: NSView {
         translatesAutoresizingMaskIntoConstraints = false
         heightAnchor.constraint(equalToConstant: AppStatsLayout.rowHeight).isActive = true
 
+        iconView = NSImageView()
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.setContentHuggingPriority(.required, for: .horizontal)
+        iconView.setContentCompressionResistancePriority(.required, for: .horizontal)
+
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         nameLabel.textColor = .labelColor
-        nameLabel.lineBreakMode = .byClipping
+        nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         nameLabel.usesSingleLineMode = true
+        nameLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        nameContainer = NSView()
-        nameContainer.addSubview(nameLabel)
-        nameLabel.translatesAutoresizingMaskIntoConstraints = true
-        nameLabel.frame = .zero
-        nameLabel.sizeToFit()
-        nameContainer.frame = nameLabel.frame
-
-        nameScrollView = NSScrollView()
-        nameScrollView.hasHorizontalScroller = true
-        nameScrollView.hasVerticalScroller = false
-        nameScrollView.autohidesScrollers = true
-        nameScrollView.scrollerStyle = .overlay
-        nameScrollView.drawsBackground = false
-        nameScrollView.borderType = .noBorder
-        nameScrollView.documentView = nameContainer
-        nameScrollView.translatesAutoresizingMaskIntoConstraints = false
-        nameScrollView.horizontalScroller?.controlSize = .mini
+        nameStack = NSStackView(views: [iconView, nameLabel])
+        nameStack.orientation = .horizontal
+        nameStack.alignment = .centerY
+        nameStack.spacing = AppStatsLayout.appIconSpacing
+        nameStack.edgeInsets = NSEdgeInsets(
+            top: 0,
+            left: AppStatsLayout.appIconLeadingInset,
+            bottom: 0,
+            right: 0
+        )
+        nameStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        nameStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         keysLabel = makeValueLabel()
         clicksLabel = makeValueLabel()
         scrollLabel = makeValueLabel()
 
-        let stack = NSStackView(views: [nameScrollView, keysLabel, clicksLabel, scrollLabel])
+        let stack = NSStackView(views: [nameStack, keysLabel, clicksLabel, scrollLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = AppStatsLayout.columnSpacing
@@ -705,104 +596,56 @@ private final class AppStatsRowView: NSView {
             stack.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
 
-        nameWidthConstraint = nameScrollView.widthAnchor.constraint(equalToConstant: AppStatsLayout.appColumnWidth)
-        keysWidthConstraint = keysLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.keysColumnWidth)
-        clicksWidthConstraint = clicksLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.clicksColumnWidth)
-        scrollWidthConstraint = scrollLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.scrollColumnWidth)
         NSLayoutConstraint.activate([
-            nameWidthConstraint,
-            keysWidthConstraint,
-            clicksWidthConstraint,
-            scrollWidthConstraint,
-            nameScrollView.heightAnchor.constraint(equalToConstant: AppStatsLayout.nameColumnHeight)
+            nameStack.widthAnchor.constraint(equalToConstant: AppStatsLayout.appColumnMaxWidth),
+            keysLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
+            clicksLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
+            scrollLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth)
         ])
-        addDividerView(after: nameScrollView, divider: .appKeys)
-        addDividerView(after: keysLabel, divider: .keysClicks)
-        addDividerView(after: clicksLabel, divider: .clicksScroll)
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: AppStatsLayout.appIconSize),
+            iconView.heightAnchor.constraint(equalToConstant: AppStatsLayout.appIconSize)
+        ])
     }
 
-    func update(name: String, keyPresses: String, clicks: String, scroll: String) {
+    func update(name: String, icon: NSImage?, keyPresses: String, clicks: String, scroll: String) {
+        iconView.image = icon
         nameLabel.stringValue = name
         nameLabel.toolTip = name
-        nameLabel.sizeToFit()
-        nameContainer.frame = NSRect(origin: .zero, size: nameLabel.frame.size)
-        nameScrollView.contentView.scroll(to: .zero)
-        nameScrollView.reflectScrolledClipView(nameScrollView.contentView)
         keysLabel.stringValue = keyPresses
         clicksLabel.stringValue = clicks
         scrollLabel.stringValue = scroll
     }
 
-    func applyColumnWidths(_ widths: AppStatsColumnWidths) {
-        nameWidthConstraint.constant = widths.app
-        keysWidthConstraint.constant = widths.keys
-        clicksWidthConstraint.constant = widths.clicks
-        scrollWidthConstraint.constant = widths.scroll
+    func applyAlternatingBackground(isEvenRow: Bool) {
+        wantsLayer = true
+        let colors = NSColor.controlAlternatingRowBackgroundColors
+        let index = isEvenRow ? 0 : 1
+        let fallback = isEvenRow ? NSColor.windowBackgroundColor : NSColor.controlBackgroundColor
+        let color = colors.count > index ? colors[index] : fallback
+        layer?.backgroundColor = color.cgColor
+        layer?.cornerRadius = isEvenRow ? 0 : AppStatsLayout.rowCornerRadius
     }
 
     private func makeValueLabel() -> NSTextField {
         let label = NSTextField(labelWithString: "")
         label.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         label.textColor = .secondaryLabelColor
-        label.alignment = .right
+        label.alignment = .center
         label.setContentHuggingPriority(.required, for: .horizontal)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }
 
-    private func addDividerView(after view: NSView, divider: AppStatsColumnDivider) {
-        let dividerView = AppStatsColumnDividerView()
-        dividerView.onDrag = { [weak self] delta in
-            self?.columnResizeHandler?(divider, delta)
-        }
-        dividerView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(dividerView)
-        NSLayoutConstraint.activate([
-            dividerView.centerXAnchor.constraint(
-                equalTo: view.trailingAnchor,
-                constant: AppStatsLayout.columnSpacing / 2
-            ),
-            dividerView.topAnchor.constraint(equalTo: topAnchor),
-            dividerView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            dividerView.widthAnchor.constraint(equalToConstant: AppStatsLayout.dividerHitWidth)
-        ])
-    }
-
 }
 
 private final class AppStatsColumnDividerView: NSView {
-    var onDrag: ((CGFloat) -> Void)?
-    private var lastDragLocationX: CGFloat?
-
     override var mouseDownCanMoveWindow: Bool {
         return false
     }
 
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        guard onDrag != nil else { return nil }
-        return super.hitTest(point)
-    }
-
-    override func resetCursorRects() {
-        guard onDrag != nil else { return }
-        addCursorRect(bounds, cursor: .resizeLeftRight)
-    }
-
     override func mouseDown(with event: NSEvent) {
-        guard onDrag != nil else { return }
-        lastDragLocationX = event.locationInWindow.x
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard onDrag != nil, let last = lastDragLocationX else { return }
-        let current = event.locationInWindow.x
-        let delta = current - last
-        lastDragLocationX = current
-        onDrag?(delta)
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        lastDragLocationX = nil
+        super.mouseDown(with: event)
     }
 
     override func draw(_ dirtyRect: NSRect) {
