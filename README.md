@@ -14,6 +14,7 @@ KeyStats 是一款轻量级的 macOS/Windows 原生菜单栏应用，用于统�
 
 <img width="320" height="581" alt="image" src="https://github.com/user-attachments/assets/b363093e-9aad-4d8a-8b12-1918ef843b3f" />
 
+<img width="320" height="581" alt="image" src="https://github.com/user-attachments/assets/5ab871f2-c290-4dbd-8c1b-80da29340de8" />
 
 
 ## 安装与使用
