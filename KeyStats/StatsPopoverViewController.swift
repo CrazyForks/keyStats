@@ -19,8 +19,10 @@ class StatsPopoverViewController: NSViewController {
     private var chartView: StatsChartView!
     private var historySummaryLabel: NSTextField!
     private var settingsButton: NSButton!
+    private var appStatsButton: NSButton!
     private var allTimeStatsButton: NSButton!
     private var pendingStatsRefresh = false
+    private var statsUpdateToken: UUID?
     
     // 统计项视图
     private var keyPressView: StatItemView!
@@ -262,6 +264,25 @@ class StatsPopoverViewController: NSViewController {
             settingsButton.heightAnchor.constraint(equalToConstant: 28)
         ])
 
+        appStatsButton = makeSymbolButton(systemName: "square.grid.2x2",
+                                          fallbackTitle: NSLocalizedString("appStats.button", comment: ""),
+                                          pointSize: 16,
+                                          weight: .semibold,
+                                          action: #selector(showAppStats))
+        appStatsButton.toolTip = NSLocalizedString("appStats.button", comment: "")
+        appStatsButton.setAccessibilityLabel(NSLocalizedString("appStats.button", comment: ""))
+        appStatsButton.imageScaling = .scaleProportionallyDown
+        appStatsButton.setContentHuggingPriority(.required, for: .horizontal)
+        appStatsButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        if let hoverButton = appStatsButton as? HoverIconButton {
+            hoverButton.padding = 4
+            hoverButton.cornerRadius = 6
+        }
+        NSLayoutConstraint.activate([
+            appStatsButton.widthAnchor.constraint(equalToConstant: 28),
+            appStatsButton.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
         allTimeStatsButton = makeSymbolButton(systemName: "chart.bar.xaxis",
                                               fallbackTitle: NSLocalizedString("allTimeStats.button", comment: ""),
                                               pointSize: 16,
@@ -295,8 +316,10 @@ class StatsPopoverViewController: NSViewController {
         buttonStack.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         footerStack.addArrangedSubview(settingsButton)
+        footerStack.addArrangedSubview(appStatsButton)
         footerStack.addArrangedSubview(allTimeStatsButton)
         footerStack.setCustomSpacing(6, after: settingsButton)
+        footerStack.setCustomSpacing(6, after: appStatsButton)
         footerStack.addArrangedSubview(footerSpacer)
         footerStack.addArrangedSubview(buttonStack)
 
@@ -432,13 +455,16 @@ class StatsPopoverViewController: NSViewController {
     }
 
     private func startLiveUpdates() {
-        StatsManager.shared.statsUpdateHandler = { [weak self] in
+        statsUpdateToken = StatsManager.shared.addStatsUpdateHandler { [weak self] in
             self?.scheduleStatsRefresh()
         }
     }
 
     private func stopLiveUpdates() {
-        StatsManager.shared.statsUpdateHandler = nil
+        if let token = statsUpdateToken {
+            StatsManager.shared.removeStatsUpdateHandler(token)
+        }
+        statsUpdateToken = nil
         pendingStatsRefresh = false
     }
 
@@ -552,6 +578,11 @@ class StatsPopoverViewController: NSViewController {
 
     @objc private func showAllTimeStats() {
         AllTimeStatsWindowController.shared.show()
+        view.window?.performClose(nil)
+    }
+
+    @objc private func showAppStats() {
+        AppStatsWindowController.shared.show()
         view.window?.performClose(nil)
     }
 

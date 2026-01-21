@@ -13,8 +13,11 @@
 "settings.dynamicIconColorHelp.body" = "根据近期输入速率自动计算颜色，并在菜单栏实时展示。\n\nAPM（每分钟输入事件数）颜色范围：\n• < 80：不着色（保持默认）\n• 80–160：从浅绿渐变到绿\n• 160–240：从黄渐变到红\n• ≥ 240：红色";
 "settings.windowTitle" = "KeyStats设置";
 "button.back" = "返回";
+"menu.window" = "窗口";
+"menu.closeWindow" = "关闭窗口";
 "setting.showKeyPresses" = "在菜单栏显示按键数";
 "setting.showMouseClicks" = "在菜单栏显示点击数";
+"setting.appStatsEnabled" = "按应用统计";
 "setting.notificationsEnabled" = "开启统计通知";
 "setting.notifyKeyThreshold" = "按键通知阈值";
 "setting.notifyClickThreshold" = "点击通知阈值";
@@ -109,3 +112,24 @@
 "insights.subtitle.everests" = "座珠峰";
 "insights.subtitle.backspaceDel" = "退格/删除";
 "insights.subtitle.ratioFormat" = "键鼠比: %.1f";
+
+"appStats.windowTitle" = "按应用统计";
+"appStats.title" = "按应用统计";
+"appStats.subtitle" = "按应用统计键盘/点击/滚动，仅保存聚合数据";
+"appStats.button" = "应用统计";
+"appStats.range.today" = "今天";
+"appStats.range.week" = "过去7天";
+"appStats.range.month" = "过去30天";
+"appStats.range.all" = "全部";
+"appStats.metric.keys" = "键盘";
+"appStats.metric.clicks" = "点击";
+"appStats.metric.scroll" = "滚轮";
+"appStats.column.app" = "应用";
+"appStats.column.keys" = "键盘";
+"appStats.column.clicks" = "点击";
+"appStats.column.scroll" = "滚轮";
+"appStats.sortIndicator" = "↓";
+"appStats.summary" = "总计: %@ 键盘 | %@ 点击 | %@ 滚动";
+"appStats.empty" = "暂无应用数据";
+"appStats.disabled" = "按应用统计已在设置中关闭";
+"appStats.unknownApp" = "未知应用";

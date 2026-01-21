@@ -112,20 +112,24 @@ class InputMonitor {
             let isAutoRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             if !isAutoRepeat {
                 let keyName = keyName(for: event)
-                statsManager.incrementKeyPresses(keyName: keyName)
+                let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
+                statsManager.incrementKeyPresses(keyName: keyName, appIdentity: appIdentity)
             }
             
         case .leftMouseDown:
-            statsManager.incrementLeftClicks()
+            let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
+            statsManager.incrementLeftClicks(appIdentity: appIdentity)
             
         case .rightMouseDown:
-            statsManager.incrementRightClicks()
+            let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
+            statsManager.incrementRightClicks(appIdentity: appIdentity)
             
         case .mouseMoved, .leftMouseDragged, .rightMouseDragged:
             handleMouseMove(event: event)
             
         case .scrollWheel:
-            handleScroll(event: event)
+            let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
+            handleScroll(event: event, appIdentity: appIdentity)
             
         default:
             break
@@ -236,7 +240,7 @@ class InputMonitor {
         lastMouseSampleTime = now
     }
     
-    private func handleScroll(event: CGEvent) {
+    private func handleScroll(event: CGEvent, appIdentity: AppIdentity?) {
         // 获取滚动距离
         let deltaY = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
         let deltaX = event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
@@ -244,6 +248,6 @@ class InputMonitor {
         // 计算总滚动距离
         let totalDelta = sqrt(deltaX * deltaX + deltaY * deltaY)
         
-        StatsManager.shared.addScrollDistance(totalDelta * 10) // 放大系数使数据更直观
+        StatsManager.shared.addScrollDistance(totalDelta * 10, appIdentity: appIdentity) // 放大系数使数据更直观
     }
 }

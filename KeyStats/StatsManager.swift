@@ -22,6 +22,7 @@ struct DailyStats: Codable {
     var rightClicks: Int
     var mouseDistance: Double  // 以像素为单位
     var scrollDistance: Double // 以像素为单位
+    var appStats: [String: AppStats]
     
     init() {
         self.date = Calendar.current.startOfDay(for: Date())
@@ -31,6 +32,7 @@ struct DailyStats: Codable {
         self.rightClicks = 0
         self.mouseDistance = 0
         self.scrollDistance = 0
+        self.appStats = [:]
     }
 
     init(date: Date) {
@@ -41,6 +43,42 @@ struct DailyStats: Codable {
         self.rightClicks = 0
         self.mouseDistance = 0
         self.scrollDistance = 0
+        self.appStats = [:]
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case keyPresses
+        case keyPressCounts
+        case leftClicks
+        case rightClicks
+        case mouseDistance
+        case scrollDistance
+        case appStats
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Calendar.current.startOfDay(for: Date())
+        keyPresses = try container.decodeIfPresent(Int.self, forKey: .keyPresses) ?? 0
+        keyPressCounts = try container.decodeIfPresent([String: Int].self, forKey: .keyPressCounts) ?? [:]
+        leftClicks = try container.decodeIfPresent(Int.self, forKey: .leftClicks) ?? 0
+        rightClicks = try container.decodeIfPresent(Int.self, forKey: .rightClicks) ?? 0
+        mouseDistance = try container.decodeIfPresent(Double.self, forKey: .mouseDistance) ?? 0
+        scrollDistance = try container.decodeIfPresent(Double.self, forKey: .scrollDistance) ?? 0
+        appStats = try container.decodeIfPresent([String: AppStats].self, forKey: .appStats) ?? [:]
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(date, forKey: .date)
+        try container.encode(keyPresses, forKey: .keyPresses)
+        try container.encode(keyPressCounts, forKey: .keyPressCounts)
+        try container.encode(leftClicks, forKey: .leftClicks)
+        try container.encode(rightClicks, forKey: .rightClicks)
+        try container.encode(mouseDistance, forKey: .mouseDistance)
+        try container.encode(scrollDistance, forKey: .scrollDistance)
+        try container.encode(appStats, forKey: .appStats)
     }
     
     var totalClicks: Int {
@@ -53,7 +91,8 @@ struct DailyStats: Codable {
             rightClicks > 0 ||
             mouseDistance > 0 ||
             scrollDistance > 0 ||
-            !keyPressCounts.isEmpty
+            !keyPressCounts.isEmpty ||
+            !appStats.isEmpty
     }
     
     /// 纠错率 (Delete + ForwardDelete / Total Keys)
@@ -187,6 +226,7 @@ class StatsManager {
     private let historyKey = "dailyStatsHistory"
     private let showKeyPressesKey = "showKeyPressesInMenuBar"
     private let showMouseClicksKey = "showMouseClicksInMenuBar"
+    private let appStatsEnabledKey = "appStatsEnabled"
     private let keyPressNotifyThresholdKey = "keyPressNotifyThreshold"
     private let clickNotifyThresholdKey = "clickNotifyThreshold"
     private let notificationsEnabledKey = "notificationsEnabled"
@@ -213,7 +253,7 @@ class StatsManager {
     private(set) var currentInputRatePerSecond: Double = 0
     private(set) var currentIconTintColor: NSColor?
     var menuBarUpdateHandler: (() -> Void)?
-    var statsUpdateHandler: (() -> Void)?
+    private var statsUpdateHandlers: [UUID: () -> Void] = [:]
     
     // Cache for All-Time Stats
     private var cachedHistoryStats: AllTimeStats?
@@ -233,6 +273,14 @@ class StatsManager {
         didSet {
             userDefaults.set(showMouseClicksInMenuBar, forKey: showMouseClicksKey)
             notifyMenuBarUpdate()
+        }
+    }
+
+    /// 设置：是否开启按应用统计
+    var appStatsEnabled: Bool {
+        didSet {
+            userDefaults.set(appStatsEnabled, forKey: appStatsEnabledKey)
+            notifyStatsUpdate()
         }
     }
 
@@ -305,6 +353,7 @@ class StatsManager {
         // 加载设置（按键/点击默认 true，通知/动态图标默认 false）
         showKeyPressesInMenuBar = userDefaults.object(forKey: showKeyPressesKey) as? Bool ?? true
         showMouseClicksInMenuBar = userDefaults.object(forKey: showMouseClicksKey) as? Bool ?? true
+        appStatsEnabled = userDefaults.object(forKey: appStatsEnabledKey) as? Bool ?? true
         notificationsEnabled = userDefaults.object(forKey: notificationsEnabledKey) as? Bool ?? false
         keyPressNotifyThreshold = userDefaults.object(forKey: keyPressNotifyThresholdKey) as? Int ?? 1000
         clickNotifyThreshold = userDefaults.object(forKey: clickNotifyThresholdKey) as? Int ?? 1000
@@ -336,12 +385,27 @@ class StatsManager {
     }
     
     // MARK: - 数据更新方法
-    
-    func incrementKeyPresses(keyName: String? = nil) {
+
+    private func updateAppStats(for identity: AppIdentity, update: (inout AppStats) -> Void) {
+        guard appStatsEnabled else { return }
+        let bundleId = identity.bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bundleId.isEmpty else { return }
+        var stats = currentStats.appStats[bundleId] ?? AppStats(bundleId: bundleId, displayName: identity.displayName)
+        stats.updateDisplayName(identity.displayName)
+        update(&stats)
+        currentStats.appStats[bundleId] = stats
+    }
+
+    func incrementKeyPresses(keyName: String? = nil, appIdentity: AppIdentity? = nil) {
         ensureCurrentDay()
         currentStats.keyPresses += 1
         if let keyName = keyName, !keyName.isEmpty {
             currentStats.keyPressCounts[keyName, default: 0] += 1
+        }
+        if let appIdentity = appIdentity {
+            updateAppStats(for: appIdentity) { stats in
+                stats.recordKeyPress()
+            }
         }
         registerInputEvent()
         notifyMenuBarUpdate()
@@ -349,18 +413,28 @@ class StatsManager {
         notifyKeyPressThresholdIfNeeded()
     }
     
-    func incrementLeftClicks() {
+    func incrementLeftClicks(appIdentity: AppIdentity? = nil) {
         ensureCurrentDay()
         currentStats.leftClicks += 1
+        if let appIdentity = appIdentity {
+            updateAppStats(for: appIdentity) { stats in
+                stats.recordLeftClick()
+            }
+        }
         registerInputEvent()
         notifyMenuBarUpdate()
         notifyStatsUpdate()
         notifyClickThresholdIfNeeded()
     }
     
-    func incrementRightClicks() {
+    func incrementRightClicks(appIdentity: AppIdentity? = nil) {
         ensureCurrentDay()
         currentStats.rightClicks += 1
+        if let appIdentity = appIdentity {
+            updateAppStats(for: appIdentity) { stats in
+                stats.recordRightClick()
+            }
+        }
         registerInputEvent()
         notifyMenuBarUpdate()
         notifyStatsUpdate()
@@ -373,9 +447,14 @@ class StatsManager {
         scheduleDebouncedStatsUpdate()
     }
     
-    func addScrollDistance(_ distance: Double) {
+    func addScrollDistance(_ distance: Double, appIdentity: AppIdentity? = nil) {
         ensureCurrentDay()
         currentStats.scrollDistance += abs(distance)
+        if let appIdentity = appIdentity {
+            updateAppStats(for: appIdentity) { stats in
+                stats.addScrollDistance(distance)
+            }
+        }
         scheduleDebouncedStatsUpdate()
     }
 
@@ -571,6 +650,17 @@ class StatsManager {
         }
     }
 
+    @discardableResult
+    func addStatsUpdateHandler(_ handler: @escaping () -> Void) -> UUID {
+        let token = UUID()
+        statsUpdateHandlers[token] = handler
+        return token
+    }
+
+    func removeStatsUpdateHandler(_ token: UUID) {
+        statsUpdateHandlers[token] = nil
+    }
+
     private func notifyMenuBarUpdate() {
         guard menuBarUpdateHandler != nil else { return }
         DispatchQueue.main.async { [weak self] in
@@ -579,14 +669,17 @@ class StatsManager {
     }
 
     private func notifyStatsUpdate() {
-        guard statsUpdateHandler != nil else { return }
+        guard !statsUpdateHandlers.isEmpty else { return }
         DispatchQueue.main.async { [weak self] in
-            self?.statsUpdateHandler?()
+            guard let self = self else { return }
+            for handler in self.statsUpdateHandlers.values {
+                handler()
+            }
         }
     }
 
     private func scheduleDebouncedStatsUpdate() {
-        guard statsUpdateHandler != nil else { return }
+        guard !statsUpdateHandlers.isEmpty else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             // 取消旧的 timer，实现真正的防抖
@@ -917,5 +1010,90 @@ extension StatsManager {
             total.lastDate = date
         }
         total.activeDays += 1
+    }
+}
+
+// MARK: - 按应用统计
+
+extension StatsManager {
+    enum AppStatsRange {
+        case today
+        case week
+        case month
+        case all
+    }
+
+    func appStatsSummary(range: AppStatsRange) -> [AppStats] {
+        var totals: [String: AppStats] = [:]
+        switch range {
+        case .today:
+            mergeAppStats(from: currentStats, into: &totals)
+        case .week, .month:
+            let dates = appStatsDates(in: range)
+            for date in dates {
+                let daily = dailyStats(for: date)
+                mergeAppStats(from: daily, into: &totals)
+            }
+        case .all:
+            let todayKey = dateFormatter.string(from: currentStats.date)
+            for daily in history.values {
+                if dateFormatter.string(from: daily.date) == todayKey { continue }
+                mergeAppStats(from: daily, into: &totals)
+            }
+            mergeAppStats(from: currentStats, into: &totals)
+        }
+        return Array(totals.values)
+    }
+
+    private func dailyStats(for date: Date) -> DailyStats {
+        if Calendar.current.isDate(date, inSameDayAs: currentStats.date) {
+            return currentStats
+        }
+        let key = dateFormatter.string(from: date)
+        return history[key] ?? DailyStats(date: date)
+    }
+
+    private func appStatsDates(in range: AppStatsRange) -> [Date] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        let startDate: Date
+        switch range {
+        case .today:
+            startDate = today
+        case .week:
+            startDate = calendar.date(byAdding: .day, value: -6, to: today) ?? today
+        case .month:
+            startDate = calendar.date(byAdding: .day, value: -29, to: today) ?? today
+        case .all:
+            startDate = today
+        }
+
+        var dates: [Date] = []
+        var date = startDate
+        while date <= today {
+            dates.append(date)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: date) else { break }
+            date = next
+        }
+        if dates.isEmpty {
+            dates = [today]
+        }
+        return dates
+    }
+
+    private func mergeAppStats(from daily: DailyStats, into totals: inout [String: AppStats]) {
+        guard !daily.appStats.isEmpty else { return }
+        for (bundleId, appStats) in daily.appStats {
+            var total = totals[bundleId] ?? AppStats(bundleId: bundleId, displayName: appStats.displayName)
+            if !appStats.displayName.isEmpty {
+                total.displayName = appStats.displayName
+            }
+            total.keyPresses += appStats.keyPresses
+            total.leftClicks += appStats.leftClicks
+            total.rightClicks += appStats.rightClicks
+            total.scrollDistance += appStats.scrollDistance
+            totals[bundleId] = total
+        }
     }
 }

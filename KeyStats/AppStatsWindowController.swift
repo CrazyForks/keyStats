@@ -1,18 +1,18 @@
 import Cocoa
 
-final class AllTimeStatsWindowController: NSWindowController {
-    static let shared = AllTimeStatsWindowController()
+final class AppStatsWindowController: NSWindowController {
+    static let shared = AppStatsWindowController()
 
     private init() {
-        let viewController = AllTimeStatsViewController()
+        let viewController = AppStatsViewController()
         let window = NSWindow(contentViewController: viewController)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.title = NSLocalizedString("allTimeStats.windowTitle", comment: "")
+        window.title = NSLocalizedString("appStats.windowTitle", comment: "")
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
         window.backgroundColor = .windowBackgroundColor
-        window.setContentSize(NSSize(width: 600, height: 750))
-        window.minSize = NSSize(width: 500, height: 600)
+        window.setContentSize(NSSize(width: 600, height: 680))
+        window.minSize = NSSize(width: 520, height: 520)
         window.isReleasedWhenClosed = false
         window.center()
 
@@ -29,11 +29,8 @@ final class AllTimeStatsWindowController: NSWindowController {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
 
-        if let vc = contentViewController as? AllTimeStatsViewController {
+        if let vc = contentViewController as? AppStatsViewController {
             vc.refreshData()
-            DispatchQueue.main.async {
-                vc.scrollToTop()
-            }
         }
     }
 }

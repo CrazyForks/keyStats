@@ -6,6 +6,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private var appIconView: NSImageView!
     private var showKeyPressesButton: NSButton!
     private var showMouseClicksButton: NSButton!
+    private var appStatsEnabledButton: NSButton!
     private var launchAtLoginButton: NSButton!
     private var dynamicIconColorButton: NSButton!
     private var dynamicIconColorStylePopUp: NSPopUpButton!
@@ -42,7 +43,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     // MARK: - Lifecycle
 
     override func loadView() {
-        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 320))
+        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 360))
         mainView.wantsLayer = true
         view = mainView
     }
@@ -80,6 +81,10 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         showMouseClicksButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.showMouseClicks", comment: ""),
                                          target: self,
                                          action: #selector(toggleShowMouseClicks))
+
+        appStatsEnabledButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.appStatsEnabled", comment: ""),
+                                         target: self,
+                                         action: #selector(toggleAppStatsEnabled))
 
         launchAtLoginButton = NSButton(checkboxWithTitle: NSLocalizedString("button.launchAtLogin", comment: ""),
                                        target: self,
@@ -125,7 +130,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         styleRow.translatesAutoresizingMaskIntoConstraints = false
         dynamicIconColorStyleRow = styleRow
 
-        let optionsStack = NSStackView(views: [showKeyPressesButton, showMouseClicksButton, launchAtLoginButton, dynamicIconColorRow, styleRow, showThresholdsButton])
+        let optionsStack = NSStackView(views: [showKeyPressesButton, showMouseClicksButton, appStatsEnabledButton, launchAtLoginButton, dynamicIconColorRow, styleRow, showThresholdsButton])
         optionsStack.orientation = .vertical
         optionsStack.alignment = .leading
         optionsStack.spacing = 8
@@ -183,6 +188,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private func updateState() {
         showKeyPressesButton.state = StatsManager.shared.showKeyPressesInMenuBar ? .on : .off
         showMouseClicksButton.state = StatsManager.shared.showMouseClicksInMenuBar ? .on : .off
+        appStatsEnabledButton.state = StatsManager.shared.appStatsEnabled ? .on : .off
         launchAtLoginButton.state = LaunchAtLoginManager.shared.isEnabled ? .on : .off
         dynamicIconColorButton.state = StatsManager.shared.enableDynamicIconColor ? .on : .off
         updateDynamicIconColorStyleSelection()
@@ -475,6 +481,10 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     @objc private func toggleShowMouseClicks() {
         StatsManager.shared.showMouseClicksInMenuBar = (showMouseClicksButton.state == .on)
+    }
+
+    @objc private func toggleAppStatsEnabled() {
+        StatsManager.shared.appStatsEnabled = (appStatsEnabledButton.state == .on)
     }
 
     @objc private func toggleDynamicIconColor() {

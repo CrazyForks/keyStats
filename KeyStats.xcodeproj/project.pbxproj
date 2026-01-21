@@ -26,6 +26,10 @@
 		A1000013 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* SettingsWindowController.swift */; };
 		A1000014 /* HoverIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* HoverIconButton.swift */; };
 		A1000015 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017 /* NotificationManager.swift */; };
+		A1000022 /* AppStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022 /* AppStats.swift */; };
+		A1000023 /* AppActivityTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023 /* AppActivityTracker.swift */; };
+		A1000024 /* AppStatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000024 /* AppStatsWindowController.swift */; };
+		A1000025 /* AppStatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000025 /* AppStatsViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +51,10 @@
 		A2000015 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		A2000016 /* HoverIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoverIconButton.swift; sourceTree = "<group>"; };
 		A2000017 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		A2000022 /* AppStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStats.swift; sourceTree = "<group>"; };
+		A2000023 /* AppActivityTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActivityTracker.swift; sourceTree = "<group>"; };
+		A2000024 /* AppStatsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatsWindowController.swift; sourceTree = "<group>"; };
+		A2000025 /* AppStatsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatsViewController.swift; sourceTree = "<group>"; };
 		A3000001 /* KeyStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3000003 /* KeyStats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyStats.entitlements; sourceTree = "<group>"; };
@@ -78,9 +86,13 @@
 			children = (
 				A2000001 /* AppDelegate.swift */,
 				A2000002 /* InputMonitor.swift */,
+				A2000023 /* AppActivityTracker.swift */,
 				A2000003 /* StatsManager.swift */,
+				A2000022 /* AppStats.swift */,
 				A2000004 /* MenuBarController.swift */,
 				A2000005 /* StatsPopoverViewController.swift */,
+				A2000024 /* AppStatsWindowController.swift */,
+				A2000025 /* AppStatsViewController.swift */,
 				A2000008 /* MainWindowController.swift */,
 				A2000009 /* MainWindowViewController.swift */,
 				A2000016 /* HoverIconButton.swift */,
@@ -184,9 +196,13 @@
 			files = (
 				A1000001 /* AppDelegate.swift in Sources */,
 				A1000002 /* InputMonitor.swift in Sources */,
+				A1000023 /* AppActivityTracker.swift in Sources */,
 				A1000003 /* StatsManager.swift in Sources */,
+				A1000022 /* AppStats.swift in Sources */,
 				A1000004 /* MenuBarController.swift in Sources */,
 				A1000005 /* StatsPopoverViewController.swift in Sources */,
+				A1000024 /* AppStatsWindowController.swift in Sources */,
+				A1000025 /* AppStatsViewController.swift in Sources */,
 				A1000008 /* MainWindowController.swift in Sources */,
 				A1000009 /* MainWindowViewController.swift in Sources */,
 				A1000011 /* LaunchAtLoginManager.swift in Sources */,

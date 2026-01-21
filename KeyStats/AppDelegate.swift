@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 初始化菜单栏控制器
         menuBarController = MenuBarController()
         applyAppIcon()
+        setupWindowMenu()
 
         // 检查并请求辅助功能权限
         checkAndRequestPermission()
@@ -156,5 +157,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         NSApp.applicationIconImage = appIcon
+    }
+
+    private func setupWindowMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        let windowTitle = NSLocalizedString("menu.window", comment: "")
+        if mainMenu.items.contains(where: { $0.title == windowTitle }) {
+            return
+        }
+        let windowMenuItem = NSMenuItem(title: windowTitle, action: nil, keyEquivalent: "")
+        let windowMenu = NSMenu(title: windowTitle)
+        let closeTitle = NSLocalizedString("menu.closeWindow", comment: "")
+        let closeItem = NSMenuItem(title: closeTitle, action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        closeItem.keyEquivalentModifierMask = [.command]
+        windowMenu.addItem(closeItem)
+        windowMenuItem.submenu = windowMenu
+
+        let insertIndex = min(1, mainMenu.items.count)
+        mainMenu.insertItem(windowMenuItem, at: insertIndex)
+        NSApp.windowsMenu = windowMenu
     }
 }
