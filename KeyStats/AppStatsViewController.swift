@@ -16,9 +16,7 @@ final class AppStatsViewController: NSViewController {
     private var sortMetric: SortMetric = .keys
     private var appIconCache: [String: NSImage] = [:]
     private lazy var defaultAppIcon: NSImage = {
-        let icon = NSWorkspace.shared.icon(forFileType: "app")
-        icon.size = NSSize(width: AppStatsLayout.appIconSize, height: AppStatsLayout.appIconSize)
-        return icon
+        NSWorkspace.shared.icon(forFileType: "app")
     }()
 
     private lazy var numberFormatter: NumberFormatter = {
@@ -60,22 +58,42 @@ final class AppStatsViewController: NSViewController {
     // MARK: - UI
 
     private func setupUI() {
+        let headerContainer = NSView()
+        headerContainer.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerContainer)
+
+        listHeaderView = AppStatsHeaderRowView()
+        listHeaderView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(listHeaderView)
+
+        // Separator line under header
+        let separatorLine = NSView()
+        separatorLine.translatesAutoresizingMaskIntoConstraints = false
+        separatorLine.wantsLayer = true
+        separatorLine.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        view.addSubview(separatorLine)
+
         scrollView = NSScrollView(frame: view.bounds)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
         view.addSubview(scrollView)
 
-        let headerContainer = NSView()
-        headerContainer.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(headerContainer)
-
         NSLayoutConstraint.activate([
             headerContainer.topAnchor.constraint(equalTo: view.topAnchor),
             headerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 
-            scrollView.topAnchor.constraint(equalTo: headerContainer.bottomAnchor),
+            listHeaderView.topAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: 12),
+            listHeaderView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
+            listHeaderView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
+
+            separatorLine.topAnchor.constraint(equalTo: listHeaderView.bottomAnchor, constant: 8),
+            separatorLine.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
+            separatorLine.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
+            separatorLine.heightAnchor.constraint(equalToConstant: 1),
+
+            scrollView.topAnchor.constraint(equalTo: separatorLine.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -89,7 +107,7 @@ final class AppStatsViewController: NSViewController {
         containerStack.orientation = .vertical
         containerStack.alignment = .leading
         containerStack.spacing = 18
-        containerStack.edgeInsets = NSEdgeInsets(top: 12, left: 28, bottom: 28, right: 28)
+        containerStack.edgeInsets = NSEdgeInsets(top: 0, left: 28, bottom: 28, right: 28)
         containerStack.translatesAutoresizingMaskIntoConstraints = false
         documentView.addSubview(containerStack)
 
@@ -152,14 +170,10 @@ final class AppStatsViewController: NSViewController {
         headerStack.addArrangedSubview(emptyStateLabel)
         headerStack.addArrangedSubview(summaryLabel)
 
-        listHeaderView = AppStatsHeaderRowView()
         listHeaderView.sortMetricHandler = { [weak self] metric in
             self?.updateSortMetric(metric)
         }
         listHeaderView.updateSortIndicator(selectedMetric: sortMetric)
-        containerStack.addArrangedSubview(listHeaderView)
-        listHeaderView.widthAnchor.constraint(equalTo: containerStack.widthAnchor, constant: -56).isActive = true
-        containerStack.setCustomSpacing(0, after: listHeaderView)
 
         listStack = NSStackView()
         listStack.orientation = .vertical
@@ -285,19 +299,67 @@ final class AppStatsViewController: NSViewController {
 
     private func appIcon(for bundleId: String) -> NSImage {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let cached = appIconCache[trimmed], cached.size != .zero {
+        if let cached = appIconCache[trimmed] {
             return cached
         }
-        let icon: NSImage
+        let source: NSImage
         if !trimmed.isEmpty, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmed) {
             let workspaceIcon = NSWorkspace.shared.icon(forFile: url.path)
-            icon = (workspaceIcon.copy() as? NSImage) ?? workspaceIcon
+            source = (workspaceIcon.copy() as? NSImage) ?? workspaceIcon
         } else {
-            icon = (defaultAppIcon.copy() as? NSImage) ?? defaultAppIcon
+            source = (defaultAppIcon.copy() as? NSImage) ?? defaultAppIcon
         }
-        icon.size = NSSize(width: AppStatsLayout.appIconSize, height: AppStatsLayout.appIconSize)
+        let icon = rasterizeAppIcon(source)
         appIconCache[trimmed] = icon
         return icon
+    }
+
+    // MARK: - Icon Rendering
+
+    private func rasterizeAppIcon(_ source: NSImage) -> NSImage {
+        let targetSize = NSSize(width: AppStatsLayout.appIconSize, height: AppStatsLayout.appIconSize)
+        guard let rep = makeIconRep(from: source, targetSize: targetSize) else { return source }
+        let image = NSImage(size: targetSize)
+        image.addRepresentation(rep)
+        return image
+    }
+
+    private func makeIconRep(from source: NSImage, targetSize: NSSize) -> NSBitmapImageRep? {
+        let scale: CGFloat = 2.0
+        let pixelWidth = max(1, Int(targetSize.width * scale))
+        let pixelHeight = max(1, Int(targetSize.height * scale))
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelWidth,
+            pixelsHigh: pixelHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            return nil
+        }
+        rep.size = targetSize
+
+        NSGraphicsContext.saveGraphicsState()
+        if let context = NSGraphicsContext(bitmapImageRep: rep) {
+            NSGraphicsContext.current = context
+            context.imageInterpolation = .high
+            source.draw(
+                in: NSRect(origin: .zero, size: targetSize),
+                from: NSRect(origin: .zero, size: source.size),
+                operation: .copy,
+                fraction: 1.0,
+                respectFlipped: false,
+                hints: nil
+            )
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        return rep
     }
 
     // MARK: - Updates
@@ -372,7 +434,7 @@ private enum AppStatsLayout {
     static let dividerThickness: CGFloat = 1
     static let dividerHitWidth: CGFloat = 6
     static let dividerVerticalInset: CGFloat = 0
-    static let appIconSize: CGFloat = 16
+    static let appIconSize: CGFloat = 24
     static let appIconSpacing: CGFloat = 6
     static let appIconLeadingInset: CGFloat = 6
 }
@@ -449,6 +511,12 @@ private final class AppStatsHeaderRowView: NSView {
         nameStack.orientation = .horizontal
         nameStack.alignment = .centerY
         nameStack.spacing = AppStatsLayout.appIconSpacing
+        nameStack.edgeInsets = NSEdgeInsets(
+            top: 0,
+            left: AppStatsLayout.appIconLeadingInset,
+            bottom: 0,
+            right: 0
+        )
         nameStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
         nameStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -553,7 +621,7 @@ private final class AppStatsRowView: NSView {
         heightAnchor.constraint(equalToConstant: AppStatsLayout.rowHeight).isActive = true
 
         iconView = NSImageView()
-        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.imageScaling = .scaleProportionallyDown
         iconView.setContentHuggingPriority(.required, for: .horizontal)
         iconView.setContentCompressionResistancePriority(.required, for: .horizontal)
 
