@@ -241,18 +241,38 @@ final class AppStatsViewController: NSViewController {
         listHeaderView.isHidden = false
         emptyStateLabel.isHidden = true
 
+        let maxKeys = Double(items.map { $0.keyPresses }.max() ?? 1)
+        let maxClicks = Double(items.map { $0.totalClicks }.max() ?? 1)
+        let maxScroll = items.map { $0.scrollDistance }.max() ?? 1
+
+        var rows: [AppStatsRowView] = []
+
         for (index, item) in items.enumerated() {
             let row = AppStatsRowView()
             row.applyAlternatingBackground(isEvenRow: index.isMultiple(of: 2))
             row.update(
                 name: displayName(for: item),
                 icon: appIcon(for: item.bundleId),
-                keyPresses: formatNumber(item.keyPresses),
-                clicks: formatNumber(item.totalClicks),
-                scroll: formatScrollDistance(item.scrollDistance)
+                keys: Double(item.keyPresses),
+                clicks: Double(item.totalClicks),
+                scroll: item.scrollDistance,
+                maxKeys: maxKeys,
+                maxClicks: maxClicks,
+                maxScroll: maxScroll,
+                keysFormatted: formatNumber(item.keyPresses),
+                clicksFormatted: formatNumber(item.totalClicks),
+                scrollFormatted: formatScrollDistance(item.scrollDistance)
             )
             listStack.addArrangedSubview(row)
             row.widthAnchor.constraint(equalTo: listStack.widthAnchor).isActive = true
+            rows.append(row)
+        }
+
+        DispatchQueue.main.async {
+            for (index, row) in rows.enumerated() {
+                let delay = Double(index) * 0.03
+                row.animateBars(delay: delay)
+            }
         }
     }
 
@@ -425,8 +445,8 @@ private final class FlippedView: NSView {
 }
 
 private enum AppStatsLayout {
-    static let appColumnMaxWidth: CGFloat = 220
-    static let metricColumnWidth: CGFloat = 80
+    static let appColumnMaxWidth: CGFloat = 180
+    static let metricColumnWidth: CGFloat = 93
     static let columnSpacing: CGFloat = 12
     static let rowHeight: CGFloat = 32
     static let rowCornerRadius: CGFloat = 8
@@ -437,6 +457,8 @@ private enum AppStatsLayout {
     static let appIconSize: CGFloat = 24
     static let appIconSpacing: CGFloat = 6
     static let appIconLeadingInset: CGFloat = 6
+    static let barHeight: CGFloat = 16
+    static let barCornerRadius: CGFloat = 4
 }
 
 private final class SortableHeaderLabel: NSTextField {
@@ -523,6 +545,7 @@ private final class AppStatsHeaderRowView: NSView {
         let stack = NSStackView(views: [nameStack, keysLabel, clicksLabel, scrollLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
+        stack.distribution = .fill
         stack.spacing = AppStatsLayout.columnSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
@@ -535,12 +558,10 @@ private final class AppStatsHeaderRowView: NSView {
 
         NSLayoutConstraint.activate([
             nameStack.widthAnchor.constraint(equalToConstant: AppStatsLayout.appColumnMaxWidth),
-            keysLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
-            clicksLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
-            scrollLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth)
-        ])
-        NSLayoutConstraint.activate([
-            nameSpacer.widthAnchor.constraint(equalToConstant: AppStatsLayout.appIconSize)
+            nameSpacer.widthAnchor.constraint(equalToConstant: AppStatsLayout.appIconSize),
+            // 三列等宽
+            keysLabel.widthAnchor.constraint(equalTo: clicksLabel.widthAnchor),
+            clicksLabel.widthAnchor.constraint(equalTo: scrollLabel.widthAnchor)
         ])
 
         addDividerView(after: nameStack)
@@ -574,13 +595,8 @@ private final class AppStatsHeaderRowView: NSView {
         label.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         label.textColor = .secondaryLabelColor
         label.alignment = isNameColumn ? .left : .center
-        if isNameColumn {
-            label.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        } else {
-            label.setContentHuggingPriority(.required, for: .horizontal)
-            label.setContentCompressionResistancePriority(.required, for: .horizontal)
-        }
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     }
 
     private func addDividerView(after view: NSView) {
@@ -603,9 +619,9 @@ private final class AppStatsRowView: NSView {
     private var nameStack: NSStackView!
     private var iconView: NSImageView!
     private var nameLabel: NSTextField!
-    private var keysLabel: NSTextField!
-    private var clicksLabel: NSTextField!
-    private var scrollLabel: NSTextField!
+    private var keysBar: SingleBarView!
+    private var clicksBar: SingleBarView!
+    private var scrollBar: SingleBarView!
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -647,11 +663,14 @@ private final class AppStatsRowView: NSView {
         nameStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
         nameStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        keysLabel = makeValueLabel()
-        clicksLabel = makeValueLabel()
-        scrollLabel = makeValueLabel()
+        keysBar = SingleBarView(color: .systemBlue)
+        keysBar.translatesAutoresizingMaskIntoConstraints = false
+        clicksBar = SingleBarView(color: .systemGreen)
+        clicksBar.translatesAutoresizingMaskIntoConstraints = false
+        scrollBar = SingleBarView(color: .systemOrange)
+        scrollBar.translatesAutoresizingMaskIntoConstraints = false
 
-        let stack = NSStackView(views: [nameStack, keysLabel, clicksLabel, scrollLabel])
+        let stack = NSStackView(views: [nameStack, keysBar, clicksBar, scrollBar])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = AppStatsLayout.columnSpacing
@@ -666,9 +685,12 @@ private final class AppStatsRowView: NSView {
 
         NSLayoutConstraint.activate([
             nameStack.widthAnchor.constraint(equalToConstant: AppStatsLayout.appColumnMaxWidth),
-            keysLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
-            clicksLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth),
-            scrollLabel.widthAnchor.constraint(equalToConstant: AppStatsLayout.metricColumnWidth)
+            keysBar.heightAnchor.constraint(equalToConstant: AppStatsLayout.rowHeight),
+            clicksBar.heightAnchor.constraint(equalToConstant: AppStatsLayout.rowHeight),
+            scrollBar.heightAnchor.constraint(equalToConstant: AppStatsLayout.rowHeight),
+            // 三列等宽
+            keysBar.widthAnchor.constraint(equalTo: clicksBar.widthAnchor),
+            clicksBar.widthAnchor.constraint(equalTo: scrollBar.widthAnchor)
         ])
         NSLayoutConstraint.activate([
             iconView.widthAnchor.constraint(equalToConstant: AppStatsLayout.appIconSize),
@@ -676,13 +698,25 @@ private final class AppStatsRowView: NSView {
         ])
     }
 
-    func update(name: String, icon: NSImage?, keyPresses: String, clicks: String, scroll: String) {
+    func update(
+        name: String,
+        icon: NSImage?,
+        keys: Double, clicks: Double, scroll: Double,
+        maxKeys: Double, maxClicks: Double, maxScroll: Double,
+        keysFormatted: String, clicksFormatted: String, scrollFormatted: String
+    ) {
         iconView.image = icon
         nameLabel.stringValue = name
         nameLabel.toolTip = name
-        keysLabel.stringValue = keyPresses
-        clicksLabel.stringValue = clicks
-        scrollLabel.stringValue = scroll
+        keysBar.update(value: keys, maxValue: maxKeys, formatted: keysFormatted)
+        clicksBar.update(value: clicks, maxValue: maxClicks, formatted: clicksFormatted)
+        scrollBar.update(value: scroll, maxValue: maxScroll, formatted: scrollFormatted)
+    }
+
+    func animateBars(delay: TimeInterval) {
+        keysBar.animateIn(delay: delay)
+        clicksBar.animateIn(delay: delay + 0.05)
+        scrollBar.animateIn(delay: delay + 0.1)
     }
 
     func applyAlternatingBackground(isEvenRow: Bool) {
@@ -694,17 +728,124 @@ private final class AppStatsRowView: NSView {
         layer?.backgroundColor = color.cgColor
         layer?.cornerRadius = isEvenRow ? 0 : AppStatsLayout.rowCornerRadius
     }
+}
 
-    private func makeValueLabel() -> NSTextField {
-        let label = NSTextField(labelWithString: "")
-        label.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
-        label.textColor = .secondaryLabelColor
-        label.alignment = .center
-        label.setContentHuggingPriority(.required, for: .horizontal)
-        label.setContentCompressionResistancePriority(.required, for: .horizontal)
-        return label
+private final class SingleBarView: NSView {
+    private var barLayer: CALayer!
+    private var valueLabel: NSTextField!
+    private var value: Double = 0
+    private var maxValue: Double = 1
+    private var formattedValue: String = ""
+    private var targetBarWidth: CGFloat = 0
+    private let labelPadding: CGFloat = 4
+
+    init(color: NSColor) {
+        super.init(frame: .zero)
+        setupUI(color: color)
     }
 
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupUI(color: .systemBlue)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupUI(color: NSColor) {
+        wantsLayer = true
+        layer?.masksToBounds = false
+
+        barLayer = CALayer()
+        barLayer.backgroundColor = color.cgColor
+        barLayer.cornerRadius = AppStatsLayout.barCornerRadius
+        barLayer.anchorPoint = CGPoint(x: 0, y: 0.5)
+        layer?.addSublayer(barLayer)
+
+        valueLabel = NSTextField(labelWithString: "")
+        valueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+        valueLabel.textColor = .secondaryLabelColor
+        valueLabel.alignment = .right
+        valueLabel.backgroundColor = .clear
+        valueLabel.drawsBackground = false
+        valueLabel.isBezeled = false
+        valueLabel.isEditable = false
+        addSubview(valueLabel)
+    }
+
+    override func layout() {
+        super.layout()
+        recalculateBarWidth()
+        updateBarPosition(animated: false)
+        updateLabelPosition()
+    }
+
+    func update(value: Double, maxValue: Double, formatted: String) {
+        self.value = value
+        self.maxValue = max(1, maxValue)
+        self.formattedValue = formatted
+        valueLabel.stringValue = formatted
+        recalculateBarWidth()
+    }
+
+    private func recalculateBarWidth() {
+        targetBarWidth = bounds.width * CGFloat(value / maxValue)
+    }
+
+    func animateIn(delay: TimeInterval = 0) {
+        targetBarWidth = bounds.width * CGFloat(value / maxValue)
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        barLayer.frame = CGRect(x: 0, y: (bounds.height - AppStatsLayout.barHeight) / 2, width: 0, height: AppStatsLayout.barHeight)
+        CATransaction.commit()
+
+        let animation = CABasicAnimation(keyPath: "bounds.size.width")
+        animation.fromValue = 0
+        animation.toValue = targetBarWidth
+        animation.duration = 0.35
+        animation.beginTime = CACurrentMediaTime() + delay
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+        barLayer.add(animation, forKey: "widthAnimation")
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        barLayer.bounds.size.width = targetBarWidth
+        CATransaction.commit()
+
+        updateLabelPosition()
+    }
+
+    private func updateBarPosition(animated: Bool) {
+        barLayer.removeAnimation(forKey: "widthAnimation")
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        barLayer.frame = CGRect(x: 0, y: (bounds.height - AppStatsLayout.barHeight) / 2, width: targetBarWidth, height: AppStatsLayout.barHeight)
+        CATransaction.commit()
+    }
+
+    private func updateLabelPosition() {
+        valueLabel.sizeToFit()
+        let labelSize = valueLabel.frame.size
+        let labelY = (bounds.height - labelSize.height) / 2
+        let minWidthForLabel = labelSize.width + labelPadding * 2
+
+        if targetBarWidth >= minWidthForLabel {
+            // 显示在柱状图内部靠右
+            let labelX = targetBarWidth - labelSize.width - labelPadding
+            valueLabel.frame = CGRect(x: labelX, y: labelY, width: labelSize.width, height: labelSize.height)
+            valueLabel.textColor = .white
+        } else {
+            // 显示在柱状图右侧
+            let labelX = targetBarWidth + labelPadding
+            valueLabel.frame = CGRect(x: labelX, y: labelY, width: labelSize.width, height: labelSize.height)
+            valueLabel.textColor = .secondaryLabelColor
+        }
+    }
 }
 
 private final class AppStatsColumnDividerView: NSView {
