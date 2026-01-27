@@ -1,5 +1,6 @@
 import Cocoa
 import PostHog
+import SwiftUI
 
 /// 统计详情弹出视图控制器
 class StatsPopoverViewController: NSViewController {
@@ -12,6 +13,8 @@ class StatsPopoverViewController: NSViewController {
     private var keyBreakdownGridStack: NSStackView!
     private var keyBreakdownColumns: [NSStackView] = []
     private var keyBreakdownSeparators: [NSView] = []
+    private var keyBreakdownRowCache: [String: KeyCountRowView] = [:]
+    private var keyBreakdownDisplayedKeys: [String] = []
     private var historyTitleLabel: NSTextField!
     private var rangeControl: NSSegmentedControl!
     private var metricControl: NSSegmentedControl!
@@ -500,13 +503,14 @@ class StatsPopoverViewController: NSViewController {
         let items = StatsManager.shared.keyPressBreakdownSorted()
         let hasItems = !items.isEmpty
         keyBreakdownSeparators.forEach { $0.isHidden = !hasItems }
-        for column in keyBreakdownColumns {
-            column.arrangedSubviews.forEach {
-                column.removeArrangedSubview($0)
-                $0.removeFromSuperview()
-            }
-        }
         guard hasItems else {
+            keyBreakdownDisplayedKeys = []
+            for column in keyBreakdownColumns {
+                column.arrangedSubviews.forEach {
+                    column.removeArrangedSubview($0)
+                    $0.removeFromSuperview()
+                }
+            }
             let emptyLabel = createLabel(text: NSLocalizedString("keyBreakdown.empty", comment: ""), fontSize: 12, weight: .regular)
             emptyLabel.textColor = .secondaryLabelColor
             emptyLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -517,14 +521,35 @@ class StatsPopoverViewController: NSViewController {
             return
         }
         let limitedItems = Array(items.prefix(15))
+        let newKeys = limitedItems.map { $0.key }
+        if newKeys == keyBreakdownDisplayedKeys {
+            for item in limitedItems {
+                if let row = keyBreakdownRowCache[item.key] {
+                    row.update(key: item.key, count: formatNumber(item.count))
+                }
+            }
+            return
+        }
+        for column in keyBreakdownColumns {
+            column.arrangedSubviews.forEach {
+                column.removeArrangedSubview($0)
+                $0.removeFromSuperview()
+            }
+        }
         for (index, item) in limitedItems.enumerated() {
             let columnIndex = index / 5
             if columnIndex >= keyBreakdownColumns.count { break }
-            let row = KeyCountRowView(key: item.key, count: formatNumber(item.count))
+            let row = keyBreakdownRowCache[item.key] ?? {
+                let row = KeyCountRowView(key: item.key, count: formatNumber(item.count))
+                keyBreakdownRowCache[item.key] = row
+                return row
+            }()
             let column = keyBreakdownColumns[columnIndex]
             column.addArrangedSubview(row)
-            row.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+            row.constrainWidth(to: column)
+            row.update(key: item.key, count: formatNumber(item.count))
         }
+        keyBreakdownDisplayedKeys = newKeys
     }
 
     @objc private func historyControlsChanged() {
@@ -629,12 +654,75 @@ class StatsPopoverViewController: NSViewController {
     }
 }
 
+// MARK: - 统计项动画数值
+
+final class AnimatedStatValueViewModel: ObservableObject {
+    @Published var text: String
+
+    init(text: String) {
+        self.text = text
+    }
+}
+
+struct AnimatedStatValueView: View {
+    @ObservedObject var viewModel: AnimatedStatValueViewModel
+
+    var body: some View {
+        Group {
+            if #available(macOS 14.0, *) {
+                Text(viewModel.text)
+                    .font(.system(size: 14, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(nsColor: .systemBlue))
+                    .contentTransition(.numericText())
+            } else {
+                Text(viewModel.text)
+                    .font(.system(size: 14, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(nsColor: .systemBlue))
+            }
+        }
+        .animation(.default, value: viewModel.text)
+    }
+}
+
+final class AnimatedKeyCountViewModel: ObservableObject {
+    @Published var text: String
+
+    init(text: String) {
+        self.text = text
+    }
+}
+
+struct AnimatedKeyCountView: View {
+    @ObservedObject var viewModel: AnimatedKeyCountViewModel
+
+    var body: some View {
+        Group {
+            if #available(macOS 14.0, *) {
+                Text(viewModel.text)
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                    .contentTransition(.numericText())
+            } else {
+                Text(viewModel.text)
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+            }
+        }
+        .animation(.default, value: viewModel.text)
+    }
+}
+
 // MARK: - 统计项视图
 
 class StatItemView: NSView {
     private var iconLabel: NSTextField!
     private var titleLabel: NSTextField!
-    private var valueLabel: NSTextField!
+    private var valueViewModel: AnimatedStatValueViewModel!
+    private var valueHostingView: NSHostingView<AnimatedStatValueView>!
     
     init(icon: String, title: String, value: String) {
         super.init(frame: .zero)
@@ -661,13 +749,11 @@ class StatItemView: NSView {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(titleLabel)
         
-        // 数值
-        valueLabel = NSTextField(labelWithString: value)
-        valueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 14, weight: .semibold)
-        valueLabel.textColor = .systemBlue
-        valueLabel.alignment = .right
-        valueLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(valueLabel)
+        // 数值（SwiftUI 动画）
+        valueViewModel = AnimatedStatValueViewModel(text: value)
+        valueHostingView = NSHostingView(rootView: AnimatedStatValueView(viewModel: valueViewModel))
+        valueHostingView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(valueHostingView)
         
         // 布局
         NSLayoutConstraint.activate([
@@ -680,14 +766,27 @@ class StatItemView: NSView {
             titleLabel.leadingAnchor.constraint(equalTo: iconLabel.trailingAnchor, constant: 4),
             titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             
-            valueLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
-            valueLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 8)
+            valueHostingView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            valueHostingView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            valueHostingView.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 8)
         ])
     }
     
     func updateValue(_ value: String) {
-        valueLabel.stringValue = value
+        let updateBlock = {
+            self.valueViewModel.text = value
+        }
+
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async {
+                updateBlock()
+            }
+        }
+
+        valueHostingView.invalidateIntrinsicContentSize()
+        needsLayout = true
     }
 }
 
@@ -695,7 +794,9 @@ class StatItemView: NSView {
 
 class KeyCountRowView: NSView {
     private var keyLabel: NSTextField!
-    private var countLabel: NSTextField!
+    private var countViewModel: AnimatedKeyCountViewModel!
+    private var countHostingView: NSHostingView<AnimatedKeyCountView>!
+    private var widthConstraint: NSLayoutConstraint?
     private var currentKey: String
     private static let symbolNameMap: [String: String] = [
         "Cmd": "command",
@@ -740,23 +841,21 @@ class KeyCountRowView: NSView {
         keyLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(keyLabel)
 
-        countLabel = NSTextField(labelWithString: count)
-        countLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
-        countLabel.textColor = .secondaryLabelColor
-        countLabel.alignment = .right
-        countLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(countLabel)
+        countViewModel = AnimatedKeyCountViewModel(text: count)
+        countHostingView = NSHostingView(rootView: AnimatedKeyCountView(viewModel: countViewModel))
+        countHostingView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(countHostingView)
 
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 20),
 
             keyLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
             keyLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            keyLabel.trailingAnchor.constraint(lessThanOrEqualTo: countLabel.leadingAnchor, constant: -8),
+            keyLabel.trailingAnchor.constraint(lessThanOrEqualTo: countHostingView.leadingAnchor, constant: -8),
 
-            countLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
-            countLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            countLabel.leadingAnchor.constraint(greaterThanOrEqualTo: keyLabel.trailingAnchor, constant: 8)
+            countHostingView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            countHostingView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            countHostingView.leadingAnchor.constraint(greaterThanOrEqualTo: keyLabel.trailingAnchor, constant: 8)
         ])
     }
 
@@ -764,7 +863,26 @@ class KeyCountRowView: NSView {
         currentKey = key
         applyKeyLabel()
         keyLabel.toolTip = key
-        countLabel.stringValue = count
+        let updateBlock = {
+            self.countViewModel.text = count
+        }
+
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async {
+                updateBlock()
+            }
+        }
+
+        countHostingView.invalidateIntrinsicContentSize()
+        needsLayout = true
+    }
+
+    func constrainWidth(to column: NSView) {
+        widthConstraint?.isActive = false
+        widthConstraint = widthAnchor.constraint(equalTo: column.widthAnchor)
+        widthConstraint?.isActive = true
     }
 
     override func viewDidChangeEffectiveAppearance() {

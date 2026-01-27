@@ -9,6 +9,9 @@ final class AllTimeStatsWindowController: NSWindowController {
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.title = NSLocalizedString("allTimeStats.windowTitle", comment: "")
         window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
         window.isMovableByWindowBackground = true
         window.backgroundColor = .windowBackgroundColor
         window.setContentSize(NSSize(width: 600, height: 750))

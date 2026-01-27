@@ -83,7 +83,7 @@ final class AppStatsViewController: NSViewController {
         view.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
-            headerContainer.topAnchor.constraint(equalTo: view.topAnchor),
+            headerContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 

@@ -1,5 +1,6 @@
 import Cocoa
 import PostHog
+import SwiftUI
 
 enum DynamicIconColorStyle: String {
     case icon
@@ -170,147 +171,186 @@ class MenuBarController {
 
 // MARK: - 菜单栏自定义视图
 
+final class MenuBarStatusViewModel: ObservableObject {
+    @Published var keysText: String = "0"
+    @Published var clicksText: String = "0"
+    @Published var iconColor: NSColor?
+    @Published var colorStyle: DynamicIconColorStyle = .icon
+}
+
+struct MenuBarStatusSwiftUIView: View {
+    @ObservedObject var viewModel: MenuBarStatusViewModel
+
+    private static let menuIcon: NSImage? = {
+        guard let appIcon = NSImage(named: "MenuIcon") else {
+            return nil
+        }
+        let resizedIcon = NSImage(size: NSSize(width: 18, height: 18))
+        resizedIcon.lockFocus()
+        appIcon.draw(in: NSRect(x: 0, y: 0, width: 18, height: 18),
+                    from: NSRect(origin: .zero, size: appIcon.size),
+                    operation: .copy,
+                    fraction: 1.0)
+        resizedIcon.unlockFocus()
+        resizedIcon.isTemplate = true
+        return resizedIcon
+    }()
+
+    var body: some View {
+        let hasText = !viewModel.keysText.isEmpty || !viewModel.clicksText.isEmpty
+        let horizontalPadding: CGFloat = hasText ? 6 : 4
+
+        HStack(spacing: 4) {
+            ZStack(alignment: .topLeading) {
+                if let icon = Self.menuIcon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .renderingMode(.template)
+                        .frame(width: 18, height: 18, alignment: .center)
+                        .foregroundStyle(iconTint)
+                }
+
+                if let dotColor = dotColor {
+                    Circle()
+                        .fill(dotColor)
+                        .frame(width: 6, height: 6)
+                        .offset(x: -3, y: -3)
+                }
+            }
+            .frame(width: 18, height: 18, alignment: .center)
+
+            if hasText {
+                VStack(alignment: .leading, spacing: 0) {
+                    if !viewModel.keysText.isEmpty {
+                        MenuBarValueText(text: viewModel.keysText, weight: .semibold)
+                    }
+
+                    if !viewModel.clicksText.isEmpty {
+                        MenuBarValueText(text: viewModel.clicksText, weight: .medium)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, 2)
+        .frame(minHeight: 20, alignment: .center)
+    }
+
+    private var iconTint: Color {
+        if viewModel.colorStyle == .icon, let color = viewModel.iconColor {
+            return Color(nsColor: color)
+        }
+        return Color(nsColor: .labelColor)
+    }
+
+    private var dotColor: Color? {
+        guard viewModel.colorStyle == .dot, let color = viewModel.iconColor else {
+            return nil
+        }
+        return Color(nsColor: color)
+    }
+}
+
+private struct MenuBarValueText: View {
+    let text: String
+    let weight: Font.Weight
+
+    var body: some View {
+        Group {
+            if #available(macOS 14.0, *) {
+                Text(text)
+                    .font(.system(size: 10, weight: weight))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(nsColor: .labelColor))
+                    .contentTransition(.numericText())
+            } else {
+                Text(text)
+                    .font(.system(size: 10, weight: weight))
+                    .monospacedDigit()
+                    .foregroundStyle(Color(nsColor: .labelColor))
+            }
+        }
+        .animation(.default, value: text)
+    }
+}
+
 class MenuBarStatusView: NSView {
-    private let iconContainer = NSView()
-    private let imageView = NSImageView()
-    private let colorDotView = NSView()
-    private let topLabel = NSTextField(labelWithString: "0")
-    private let bottomLabel = NSTextField(labelWithString: "0")
-    private let stack = NSStackView()
-    private let textStack = NSStackView()
-    private var stackLeadingConstraint: NSLayoutConstraint!
-    private var stackTrailingConstraint: NSLayoutConstraint!
-    private var horizontalPadding: CGFloat = 6
-    
+    private let viewModel = MenuBarStatusViewModel()
+    private var hostingView: NSHostingView<MenuBarStatusSwiftUIView>?
+
     var onClick: (() -> Void)?
-    
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setupUI()
     }
-    
+
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupUI()
     }
-    
+
     private func setupUI() {
-        // 使用菜单栏图标而不是 SF Symbol
-        if let appIcon = NSImage(named: "MenuIcon") {
-            let resizedIcon = NSImage(size: NSSize(width: 18, height: 18))
-            resizedIcon.lockFocus()
-            appIcon.draw(in: NSRect(x: 0, y: 0, width: 18, height: 18),
-                        from: NSRect(origin: .zero, size: appIcon.size),
-                        operation: .copy,
-                        fraction: 1.0)
-            resizedIcon.unlockFocus()
-            resizedIcon.isTemplate = true
-            imageView.image = resizedIcon
-        }
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.imageAlignment = .alignCenter
-        imageView.contentTintColor = .labelColor
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-
-        iconContainer.translatesAutoresizingMaskIntoConstraints = false
-        iconContainer.addSubview(imageView)
-
-        colorDotView.wantsLayer = true
-        colorDotView.layer?.cornerRadius = 3
-        colorDotView.layer?.backgroundColor = NSColor.clear.cgColor
-        colorDotView.translatesAutoresizingMaskIntoConstraints = false
-        colorDotView.isHidden = true
-        iconContainer.addSubview(colorDotView)
-        
-        topLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
-        bottomLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
-        topLabel.alignment = .left
-        bottomLabel.alignment = .left
-        topLabel.textColor = .labelColor
-        bottomLabel.textColor = .labelColor
-        
-        textStack.orientation = .vertical
-        textStack.spacing = 0
-        textStack.alignment = .leading
-        textStack.addArrangedSubview(topLabel)
-        textStack.addArrangedSubview(bottomLabel)
-        
-        stack.orientation = .horizontal
-        stack.alignment = .centerY
-        stack.spacing = 4
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(iconContainer)
-        stack.addArrangedSubview(textStack)
-        
-        addSubview(stack)
-        
-        stackLeadingConstraint = stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalPadding)
-        stackTrailingConstraint = stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -horizontalPadding)
+        let rootView = MenuBarStatusSwiftUIView(viewModel: viewModel)
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(hostingView)
 
         NSLayoutConstraint.activate([
-            iconContainer.widthAnchor.constraint(equalToConstant: 18),
-            iconContainer.heightAnchor.constraint(equalToConstant: 18),
-            imageView.leadingAnchor.constraint(equalTo: iconContainer.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: iconContainer.trailingAnchor),
-            imageView.topAnchor.constraint(equalTo: iconContainer.topAnchor),
-            imageView.bottomAnchor.constraint(equalTo: iconContainer.bottomAnchor),
-            colorDotView.widthAnchor.constraint(equalToConstant: 6),
-            colorDotView.heightAnchor.constraint(equalToConstant: 6),
-            colorDotView.leadingAnchor.constraint(equalTo: iconContainer.leadingAnchor, constant: -3),
-            colorDotView.topAnchor.constraint(equalTo: iconContainer.topAnchor, constant: -3),
-            stackLeadingConstraint,
-            stackTrailingConstraint,
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor)
+            hostingView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
-    }
-    
-    override var intrinsicContentSize: NSSize {
-        let size = stack.fittingSize
-        return NSSize(width: size.width + horizontalPadding * 2, height: max(20, size.height + 6))
-    }
-    
-    func update(keysText: String, clicksText: String) {
-        topLabel.stringValue = keysText
-        topLabel.isHidden = keysText.isEmpty
-        
-        bottomLabel.stringValue = clicksText
-        bottomLabel.isHidden = clicksText.isEmpty
 
-        let hasText = !keysText.isEmpty || !clicksText.isEmpty
-        textStack.isHidden = !hasText
-        updateHorizontalPadding(hasText: hasText)
-        
-        // 如果只有一个显示，使其居中或者调整布局，这里简化处理，
-        // 依靠 StackView 自动处理隐藏视图的布局
-        
+        self.hostingView = hostingView
+    }
+
+    override var intrinsicContentSize: NSSize {
+        if let hostingView = hostingView {
+            return hostingView.fittingSize
+        }
+        return NSSize(width: 24, height: 20)
+    }
+
+    func update(keysText: String, clicksText: String) {
+        let updateBlock = {
+            self.viewModel.keysText = keysText
+            self.viewModel.clicksText = clicksText
+        }
+
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async {
+                updateBlock()
+            }
+        }
+
         invalidateIntrinsicContentSize()
+        hostingView?.invalidateIntrinsicContentSize()
         needsLayout = true
     }
 
     func updateIconColor(_ color: NSColor?, style: DynamicIconColorStyle) {
-        guard let color = color else {
-            imageView.contentTintColor = .labelColor
-            colorDotView.isHidden = true
-            return
+        let updateBlock = {
+            self.viewModel.iconColor = color
+            self.viewModel.colorStyle = style
         }
 
-        switch style {
-        case .icon:
-            imageView.contentTintColor = color
-            colorDotView.isHidden = true
-        case .dot:
-            imageView.contentTintColor = .labelColor
-            colorDotView.layer?.backgroundColor = color.cgColor
-            colorDotView.isHidden = false
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async {
+                updateBlock()
+            }
         }
     }
 
-    private func updateHorizontalPadding(hasText: Bool) {
-        horizontalPadding = hasText ? 6 : 4
-        stackLeadingConstraint.constant = horizontalPadding
-        stackTrailingConstraint.constant = -horizontalPadding
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        return self
     }
-    
+
     override func mouseDown(with event: NSEvent) {
         onClick?()
     }
