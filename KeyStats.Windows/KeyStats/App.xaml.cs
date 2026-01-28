@@ -10,6 +10,7 @@ using KeyStats.Services;
 using KeyStats.ViewModels;
 using DotPostHog;
 using DotPostHog.Model;
+using Microsoft.Win32;
 
 namespace KeyStats;
 
@@ -122,6 +123,14 @@ public partial class App : System.Windows.Application
         };
         menu.Items.Add(showStatsItem);
 
+        var exportItem = new System.Windows.Controls.MenuItem { Header = "导出数据" };
+        exportItem.Click += (s, e) =>
+        {
+            TrackClick("context_menu_export");
+            ExportData();
+        };
+        menu.Items.Add(exportItem);
+
         var startupItem = new System.Windows.Controls.MenuItem
         {
             Header = "开机启动",
@@ -158,6 +167,40 @@ public partial class App : System.Windows.Application
         menu.Items.Add(quitItem);
 
         return menu;
+    }
+
+    private void ExportData()
+    {
+        try
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "导出数据",
+                Filter = "JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                DefaultExt = ".json",
+                AddExtension = true,
+                FileName = MakeExportFileName()
+            };
+
+            if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FileName))
+            {
+                return;
+            }
+
+            var data = StatsManager.Instance.ExportStatsData();
+            File.WriteAllBytes(dialog.FileName, data);
+            MessageBox.Show("导出成功", "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"无法导出数据：{ex.Message}", "导出失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private static string MakeExportFileName()
+    {
+        var dateString = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        return $"KeyStats-Export-{dateString}.json";
     }
 
     protected override void OnExit(ExitEventArgs e)

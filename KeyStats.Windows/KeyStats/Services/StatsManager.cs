@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Timers;
 using KeyStats.Helpers;
@@ -491,6 +492,68 @@ public class StatsManager : IDisposable
             System.Diagnostics.Debug.WriteLine($"Error loading settings: {ex.Message}");
         }
         return new AppSettings();
+    }
+
+    #endregion
+
+    #region Export
+
+    public byte[] ExportStatsData()
+    {
+        ExportPayload payload;
+        lock (_lock)
+        {
+            var normalizedDate = CurrentStats.Date.Date;
+            var currentCopy = CloneDailyStats(CurrentStats, normalizedDate);
+            var exportHistory = new Dictionary<string, DailyStats>(History.Count + 1);
+
+            foreach (var kvp in History)
+            {
+                exportHistory[kvp.Key] = CloneDailyStats(kvp.Value, kvp.Value.Date.Date);
+            }
+
+            var key = normalizedDate.ToString("yyyy-MM-dd");
+            // Ensure current stats are included (overwrite today's history entry if present).
+            exportHistory[key] = currentCopy;
+
+            payload = new ExportPayload
+            {
+                Version = 1,
+                ExportedAt = DateTime.UtcNow,
+                CurrentStats = currentCopy,
+                History = exportHistory
+            };
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var json = JsonSerializer.Serialize(payload, options);
+        return Encoding.UTF8.GetBytes(json);
+    }
+
+    private static DailyStats CloneDailyStats(DailyStats source, DateTime dateOverride)
+    {
+        var normalizedDate = dateOverride.Date;
+        return new DailyStats(normalizedDate)
+        {
+            KeyPresses = source.KeyPresses,
+            LeftClicks = source.LeftClicks,
+            RightClicks = source.RightClicks,
+            MouseDistance = source.MouseDistance,
+            ScrollDistance = source.ScrollDistance,
+            KeyPressCounts = new Dictionary<string, int>(source.KeyPressCounts)
+        };
+    }
+
+    private sealed class ExportPayload
+    {
+        public int Version { get; set; }
+        public DateTime ExportedAt { get; set; } = DateTime.UtcNow;
+        public DailyStats CurrentStats { get; set; } = new();
+        public Dictionary<string, DailyStats> History { get; set; } = new();
     }
 
     #endregion
