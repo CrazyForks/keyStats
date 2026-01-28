@@ -133,18 +133,31 @@ class StatsPopoverViewController: NSViewController {
         clickRow.alignment = .centerY
         clickRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let distanceRow = NSStackView(views: [mouseDistanceView, scrollDistanceView])
-        distanceRow.orientation = .horizontal
-        distanceRow.spacing = 16
-        distanceRow.distribution = .fillEqually
-        distanceRow.alignment = .centerY
-        distanceRow.translatesAutoresizingMaskIntoConstraints = false
+        let isChinese = Locale.current.language.languageCode?.identifier == "zh"
 
-        statsStackView = NSStackView(views: [
-            keyPressView,
-            clickRow,
-            distanceRow
-        ])
+        if isChinese {
+            // 中文环境：鼠标移动和滚动距离并排显示
+            let distanceRow = NSStackView(views: [mouseDistanceView, scrollDistanceView])
+            distanceRow.orientation = .horizontal
+            distanceRow.spacing = 16
+            distanceRow.distribution = .fillEqually
+            distanceRow.alignment = .centerY
+            distanceRow.translatesAutoresizingMaskIntoConstraints = false
+
+            statsStackView = NSStackView(views: [
+                keyPressView,
+                clickRow,
+                distanceRow
+            ])
+        } else {
+            // 英文环境：鼠标移动和滚动距离分行显示
+            statsStackView = NSStackView(views: [
+                keyPressView,
+                clickRow,
+                mouseDistanceView,
+                scrollDistanceView
+            ])
+        }
         statsStackView.orientation = .vertical
         statsStackView.spacing = 8
         statsStackView.translatesAutoresizingMaskIntoConstraints = false
@@ -706,6 +719,7 @@ struct AnimatedStatValueView: View {
                     .foregroundStyle(Color(nsColor: .systemBlue))
             }
         }
+        .fixedSize(horizontal: true, vertical: false)
         .animation(.default, value: viewModel.text)
     }
 }
@@ -770,6 +784,8 @@ class StatItemView: NSView {
         titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         titleLabel.textColor = .labelColor
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(titleLabel)
         
@@ -777,6 +793,8 @@ class StatItemView: NSView {
         valueViewModel = AnimatedStatValueViewModel(text: value)
         valueHostingView = NSHostingView(rootView: AnimatedStatValueView(viewModel: valueViewModel))
         valueHostingView.translatesAutoresizingMaskIntoConstraints = false
+        valueHostingView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        valueHostingView.setContentHuggingPriority(.required, for: .horizontal)
         addSubview(valueHostingView)
         
         // 布局

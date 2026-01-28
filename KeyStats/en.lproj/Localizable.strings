@@ -2,7 +2,7 @@
 "permission.message" = "KeyStats needs Accessibility permission to monitor keyboard and mouse events.\n\nPlease follow these steps:\n1. Click \"Open System Settings\"\n2. In \"Privacy & Security\", open \"Accessibility\"\n3. Enable KeyStats\n\nAfter authorization, the app will start counting automatically.";
 "permission.openSettings" = "Open System Settings";
 "permission.later" = "Later";
-"button.permission" = "Grant Permission";
+"button.permission" = "Permissions";
 "button.launchAtLogin" = "Open at Login";
 "settings.title" = "Settings";
 "settings.dynamicIconColor" = "Enable Dynamic Icon Color";
