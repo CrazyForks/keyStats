@@ -171,6 +171,13 @@ public partial class App : System.Windows.Application
 
     private void ExportData()
     {
+        // 确保在 UI 线程上执行
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(ExportData);
+            return;
+        }
+
         try
         {
             var dialog = new SaveFileDialog
@@ -182,14 +189,33 @@ public partial class App : System.Windows.Application
                 FileName = MakeExportFileName()
             };
 
-            if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FileName))
+            // 创建一个隐藏窗口作为对话框的 owner，避免在无窗口应用中崩溃
+            var hiddenWindow = new Window
             {
-                return;
-            }
+                Width = 0,
+                Height = 0,
+                WindowStyle = WindowStyle.None,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                Visibility = Visibility.Hidden
+            };
+            hiddenWindow.Show();
 
-            var data = StatsManager.Instance.ExportStatsData();
-            File.WriteAllBytes(dialog.FileName, data);
-            MessageBox.Show("导出成功", "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                if (dialog.ShowDialog(hiddenWindow) != true || string.IsNullOrWhiteSpace(dialog.FileName))
+                {
+                    return;
+                }
+
+                var data = StatsManager.Instance.ExportStatsData();
+                File.WriteAllBytes(dialog.FileName, data);
+                MessageBox.Show("导出成功", "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            finally
+            {
+                hiddenWindow.Close();
+            }
         }
         catch (Exception ex)
         {
