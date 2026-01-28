@@ -51,7 +51,7 @@ brew upgrade keystats
 - **鼠标点击统计**：分别统计左键和右键点击次数
 - **鼠标移动距离**：追踪鼠标移动的总距离
 - **滚动距离统计**：记录页面滚动的累计距离
-- **菜单栏显示**：核心数据直接显示在 macOS 菜单栏
+- **菜单栏显示**：核心数据直接显示在菜单栏
 - **详细面板**：点击菜单栏图标查看完整统计信息
 - **每日自动重置**：午夜自动重置统计数据
 - **数据持久化**：应用重启后数据不丢失
@@ -200,6 +200,10 @@ KeyStats 仅统计按键和点击的**次数**，**不会记录**：
 - 点击的具体位置或应用
 
 所有数据仅存储在本地，不会上传到任何服务器。
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=debugtheworldbot/keyStats&type=date&legend=top-left)](https://www.star-history.com/#debugtheworldbot/keyStats&type=date&legend=top-left)
 
 ## 许可证
 
