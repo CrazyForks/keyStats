@@ -38,6 +38,9 @@ class StatsPopoverViewController: NSViewController {
     // 底部按钮
     private var quitButton: NSButton!
     private var permissionButton: NSButton!
+    private var lastRangeSegment = 0
+    private var lastMetricSegment = 0
+    private var lastChartStyleSegment = 0
     
     // MARK: - 生命周期
     
@@ -230,6 +233,9 @@ class StatsPopoverViewController: NSViewController {
         chartView = StatsChartView()
         chartView.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(chartView)
+        lastRangeSegment = rangeControl.selectedSegment
+        lastMetricSegment = metricControl.selectedSegment
+        lastChartStyleSegment = chartStyleControl.selectedSegment
         
         // 汇总
         historySummaryLabel = createLabel(
@@ -553,7 +559,23 @@ class StatsPopoverViewController: NSViewController {
     }
 
     @objc private func historyControlsChanged() {
-        updateHistorySection()
+        let currentRange = rangeControl.selectedSegment
+        let currentMetric = metricControl.selectedSegment
+        let currentStyle = chartStyleControl.selectedSegment
+        let direction: StatsChartView.SlideDirection
+        if currentMetric != lastMetricSegment {
+            direction = currentMetric > lastMetricSegment ? .right : .left
+        } else if currentRange != lastRangeSegment {
+            direction = currentRange > lastRangeSegment ? .right : .left
+        } else if currentStyle != lastChartStyleSegment {
+            direction = currentStyle > lastChartStyleSegment ? .right : .left
+        } else {
+            direction = .right
+        }
+        lastRangeSegment = currentRange
+        lastMetricSegment = currentMetric
+        lastChartStyleSegment = currentStyle
+        updateHistorySection(animated: true, slideDirection: direction)
     }
 
     private func updatePermissionButtonVisibility() {
@@ -566,16 +588,18 @@ class StatsPopoverViewController: NSViewController {
         }
     }
     
-    private func updateHistorySection() {
+    private func updateHistorySection(animated: Bool = false, slideDirection: StatsChartView.SlideDirection? = nil) {
         let range = selectedRange()
         let metric = selectedMetric()
         let style = selectedChartStyle()
         
         let series = StatsManager.shared.historySeries(range: range, metric: metric)
-        chartView.series = series
-        chartView.metric = metric
-        chartView.range = range
-        chartView.style = style
+        chartView.apply(series: series,
+                        metric: metric,
+                        range: range,
+                        style: style,
+                        animated: animated,
+                        slideDirection: slideDirection)
         
         let total = series.reduce(0) { $0 + $1.value }
         let formatted = StatsManager.shared.formatHistoryValue(metric: metric, value: total)
@@ -1068,6 +1092,11 @@ class StatsChartView: NSView {
         case line
         case bar
     }
+
+    enum SlideDirection {
+        case left
+        case right
+    }
     
     var series: [(date: Date, value: Double)] = [] {
         didSet {
@@ -1097,12 +1126,38 @@ class StatsChartView: NSView {
     }
     
     private var trackingArea: NSTrackingArea?
+    private let transitionDuration: CFTimeInterval = 0.22
     
     private lazy var dayDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate("M/d")
         return formatter
     }()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+    }
+
+    func apply(series: [(date: Date, value: Double)],
+               metric: StatsManager.HistoryMetric,
+               range: StatsManager.HistoryRange,
+               style: Style,
+               animated: Bool,
+               slideDirection: SlideDirection? = nil) {
+        if animated {
+            addSlideTransition(direction: slideDirection ?? .right)
+        }
+        self.series = series
+        self.metric = metric
+        self.range = range
+        self.style = style
+    }
     
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -1414,5 +1469,23 @@ class StatsChartView: NSView {
         x = min(max(x, rect.minX), rect.maxX - size.width)
         let y = center.y - size.height / 2
         text.draw(at: NSPoint(x: x, y: y), withAttributes: attributes)
+    }
+
+    private func addSlideTransition(direction: SlideDirection) {
+        guard let layer = layer else { return }
+        let timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0.0, 0.2, 1.0)
+        let transition = CATransition()
+        transition.type = .push
+        transition.subtype = direction == .right ? .fromRight : .fromLeft
+        transition.duration = transitionDuration
+        transition.timingFunction = timingFunction
+        layer.add(transition, forKey: "contentSlide")
+
+        let scaleAnimation = CABasicAnimation(keyPath: "transform")
+        scaleAnimation.fromValue = CATransform3DMakeScale(0.98, 0.98, 1)
+        scaleAnimation.toValue = CATransform3DIdentity
+        scaleAnimation.duration = transitionDuration
+        scaleAnimation.timingFunction = timingFunction
+        layer.add(scaleAnimation, forKey: "contentScale")
     }
 }
