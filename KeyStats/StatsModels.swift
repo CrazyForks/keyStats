@@ -4,6 +4,28 @@ import IOKit.hidsystem
 
 let baseMetersPerPixel: Double = 0.000264583
 
+/// Formats menu bar counters with up to three significant digits.
+func formatMenuBarCompactNumber(_ number: Int) -> String {
+    guard number >= 1_000 else { return "\(number)" }
+
+    let units = ["k", "M", "B", "T", "P", "E"]
+    var divisor = 1_000.0
+    var unitIndex = 0
+
+    while unitIndex < units.count - 1 && Double(number) / divisor >= 1_000 {
+        divisor *= 1_000
+        unitIndex += 1
+    }
+
+    let value = Double(number) / divisor
+    let integerDigits = max(1, Int(log10(value)) + 1)
+    let decimalPlaces = max(0, 3 - integerDigits)
+    let scale = pow(10.0, Double(decimalPlaces))
+    let truncatedValue = floor(value * scale) / scale
+
+    return String(format: "%.\(decimalPlaces)f%@", truncatedValue, units[unitIndex])
+}
+
 private let leftControlRawMask = UInt64(NX_DEVICELCTLKEYMASK)
 private let rightControlRawMask = UInt64(NX_DEVICERCTLKEYMASK)
 private let leftShiftRawMask = UInt64(NX_DEVICELSHIFTKEYMASK)

@@ -4,6 +4,20 @@ import IOKit.hidsystem
 @testable import KeyStatsCore
 
 final class StatsModelsTests: XCTestCase {
+    func testMenuBarCompactNumberUsesAtMostThreeLeadingDigits() {
+        XCTAssertEqual(formatMenuBarCompactNumber(999), "999")
+        XCTAssertEqual(formatMenuBarCompactNumber(1_000), "1.00k")
+        XCTAssertEqual(formatMenuBarCompactNumber(3_249), "3.24k")
+        XCTAssertEqual(formatMenuBarCompactNumber(9_999), "9.99k")
+        XCTAssertEqual(formatMenuBarCompactNumber(10_300), "10.3k")
+        XCTAssertEqual(formatMenuBarCompactNumber(10_399), "10.3k")
+        XCTAssertEqual(formatMenuBarCompactNumber(99_999), "99.9k")
+        XCTAssertEqual(formatMenuBarCompactNumber(100_000), "100k")
+        XCTAssertEqual(formatMenuBarCompactNumber(999_999), "999k")
+        XCTAssertEqual(formatMenuBarCompactNumber(1_234_567), "1.23M")
+        XCTAssertEqual(formatMenuBarCompactNumber(10_349_999), "10.3M")
+    }
+
     func testDailyStatsInitNormalizesDateToStartOfDay() {
         let date = Date(timeIntervalSince1970: 1_710_099_123)
 

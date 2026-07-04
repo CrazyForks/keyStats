@@ -1304,15 +1304,9 @@ class StatsManager {
         return (keys, clicks)
     }
     
-    /// 菜单栏紧凑显示（多一位小数）
+    /// 菜单栏紧凑显示（最多三位有效数字）
     private func formatMenuBarNumber(_ number: Int) -> String {
-        if number >= 1000000 {
-            return String(format: "%.2fM", Double(number) / 1000000)
-        } else if number >= 1000 {
-            return String(format: "%.2fk", Double(number) / 1000)
-        } else {
-            return "\(number)"
-        }
+        return formatMenuBarCompactNumber(number)
     }
 
     /// 通用紧凑显示
