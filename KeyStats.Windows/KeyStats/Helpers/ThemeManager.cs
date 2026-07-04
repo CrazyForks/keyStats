@@ -82,7 +82,7 @@ public sealed class ThemeManager : IDisposable
         SetColor(res, "AccentColor", "#0067C0");
         SetColor(res, "AccentLightColor", "#60CDFF");
         SetColor(res, "TextPrimaryColor", "#1A1A1A");
-        SetColor(res, "TextSecondaryColor", "#5C5C5C");
+        SetColor(res, "TextSecondaryColor", "#4A4A4A");
         SetColor(res, "TextTertiaryColor", "#8A8A8A");
         SetColor(res, "SurfaceColor", "#FAFAFA");
         SetColor(res, "WindowSurfaceColor", "#B8FAFAFA");
@@ -96,7 +96,7 @@ public sealed class ThemeManager : IDisposable
         SetBrush(res, "AccentBrush", "#0067C0");
         SetBrush(res, "AccentLightBrush", "#60CDFF");
         SetBrush(res, "TextPrimaryBrush", "#1A1A1A");
-        SetBrush(res, "TextSecondaryBrush", "#5C5C5C");
+        SetBrush(res, "TextSecondaryBrush", "#4A4A4A");
         SetBrush(res, "TextTertiaryBrush", "#8A8A8A");
         SetBrush(res, "SurfaceBrush", "#FAFAFA");
         SetBrush(res, "WindowSurfaceBrush", "#B8FAFAFA");

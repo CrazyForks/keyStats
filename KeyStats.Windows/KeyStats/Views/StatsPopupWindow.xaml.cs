@@ -464,9 +464,9 @@ public partial class StatsPopupWindow : Window
         if (top + windowHeight > workingArea.Bottom - spacing)
             top = workingArea.Bottom - windowHeight - spacing;
 
-        // Convert to WPF coordinates (factoring in DPI)
-        Left = left / dpiScaleX;
-        Top = top / dpiScaleY;
+        // Keep the HWND aligned to physical pixels so text does not land on a fractional device pixel at 125%/150% DPI.
+        Left = Math.Round(left) / dpiScaleX;
+        Top = Math.Round(top) / dpiScaleY;
     }
 
     private void ConfigureWindowForMode()

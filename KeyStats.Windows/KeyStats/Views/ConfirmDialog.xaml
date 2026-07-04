@@ -17,10 +17,6 @@
             BorderBrush="{DynamicResource DividerBrush}"
             BorderThickness="1"
             Margin="16">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="32" ShadowDepth="8" Opacity="0.2" Direction="270"/>
-        </Border.Effect>
-
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

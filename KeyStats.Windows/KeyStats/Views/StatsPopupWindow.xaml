@@ -81,9 +81,6 @@
                             BorderBrush="{DynamicResource DividerBrush}"
                             BorderThickness="1" CornerRadius="8"
                             Padding="14,10" Margin="8">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.2" Color="Black"/>
-                        </Border.Effect>
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -206,13 +203,13 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{DynamicResource SubtleFillBrush}" CornerRadius="7" Padding="10,8" Opacity="0.9">
+                        <Border Grid.Column="0" Background="{DynamicResource SubtleFillBrush}" CornerRadius="7" Padding="10,8">
                             <StackPanel>
                                 <TextBlock Text="{x:Static p:Strings.Click_Back}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 <TextBlock Text="{Binding SideBackClicks}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" Background="{DynamicResource SubtleFillBrush}" CornerRadius="7" Padding="10,8" Opacity="0.9">
+                        <Border Grid.Column="2" Background="{DynamicResource SubtleFillBrush}" CornerRadius="7" Padding="10,8">
                             <StackPanel>
                                 <TextBlock Text="{x:Static p:Strings.Click_Forward}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 <TextBlock Text="{Binding SideForwardClicks}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0"/>

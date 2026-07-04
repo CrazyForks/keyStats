@@ -262,10 +262,6 @@
                 BorderThickness="1"
                 CornerRadius="16"
                 Padding="12,10">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.08" Direction="270"/>
-            </Border.Effect>
-
             <Grid x:Name="HeatmapAnimationHost" ClipToBounds="True">
                 <Image x:Name="PreviousSnapshotImage"
                        Stretch="Fill"
