@@ -21,7 +21,7 @@
             <Color x:Key="TextTertiaryColor">#8A8A8A</Color>
             <Color x:Key="SurfaceColor">#FAFAFA</Color>
             <Color x:Key="WindowSurfaceColor">#B8FAFAFA</Color>
-            <Color x:Key="CardColor">#CCFFFFFF</Color>
+            <Color x:Key="CardColor">#D9F2F2F2</Color>
             <Color x:Key="TrayPopupBorderColor">#20000000</Color>
             <Color x:Key="TrayBackdropTintColor">#B8FAFAFA</Color>
             <Color x:Key="DividerColor">#E5E5E5</Color>
@@ -64,7 +64,7 @@
             <Style x:Key="SectionTitle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="11"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
                 <Setter Property="Margin" Value="0,8,0,6"/>
             </Style>
 
@@ -81,7 +81,7 @@
 
             <Style x:Key="SecondaryText" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12"/>
-                <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             </Style>
 
             <Style x:Key="KeyBadge" TargetType="Border">
@@ -320,7 +320,7 @@
                                     <Setter TargetName="Border" Property="Background" Value="{DynamicResource MenuItemHoverBrush}"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

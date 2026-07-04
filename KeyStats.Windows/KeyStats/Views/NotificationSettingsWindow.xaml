@@ -65,7 +65,7 @@
 
         <!-- Hint -->
         <TextBlock Text="{x:Static p:Strings.NotifSettings_Hint}"
-                   Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"
+                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"
                    TextWrapping="Wrap" Margin="0,8,0,0"/>
     </StackPanel>
 </Window>

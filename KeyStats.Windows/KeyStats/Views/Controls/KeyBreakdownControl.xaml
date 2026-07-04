@@ -32,7 +32,7 @@
                         </Border>
                         <TextBlock Grid.Column="1" Text="{Binding Count}"
                                    FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Margin="4,0,0,0"/>
                     </Grid>
@@ -59,7 +59,7 @@
                         </Border>
                         <TextBlock Grid.Column="1" Text="{Binding Count}"
                                    FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Margin="4,0,0,0"/>
                     </Grid>
@@ -86,7 +86,7 @@
                         </Border>
                         <TextBlock Grid.Column="1" Text="{Binding Count}"
                                    FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Margin="4,0,0,0"/>
                     </Grid>
@@ -99,7 +99,7 @@
                    Text="{x:Static p:Strings.KeyBreakdown_Empty}"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    FontSize="12"
-                   Foreground="{DynamicResource TextTertiaryBrush}"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
                    Visibility="Collapsed"/>
     </Grid>
 </UserControl>

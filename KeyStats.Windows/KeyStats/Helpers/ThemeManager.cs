@@ -86,7 +86,7 @@ public sealed class ThemeManager : IDisposable
         SetColor(res, "TextTertiaryColor", "#8A8A8A");
         SetColor(res, "SurfaceColor", "#FAFAFA");
         SetColor(res, "WindowSurfaceColor", "#B8FAFAFA");
-        SetColor(res, "CardColor", "#CCFFFFFF");
+        SetColor(res, "CardColor", "#D9F2F2F2");
         SetColor(res, "TrayPopupBorderColor", "#20000000");
         SetColor(res, "TrayBackdropTintColor", "#B8FAFAFA");
         SetColor(res, "DividerColor", "#E5E5E5");
@@ -100,7 +100,7 @@ public sealed class ThemeManager : IDisposable
         SetBrush(res, "TextTertiaryBrush", "#8A8A8A");
         SetBrush(res, "SurfaceBrush", "#FAFAFA");
         SetBrush(res, "WindowSurfaceBrush", "#B8FAFAFA");
-        SetBrush(res, "CardBrush", "#CCFFFFFF");
+        SetBrush(res, "CardBrush", "#D9F2F2F2");
         SetBrush(res, "TrayPopupBorderBrush", "#20000000");
         SetBrush(res, "TrayBackdropTintBrush", "#B8FAFAFA");
         SetBrush(res, "DividerBrush", "#E5E5E5");

@@ -70,7 +70,7 @@
         </Border>
 
         <TextBlock Text="{x:Static p:Strings.Calibration_TipFooter}"
-                   Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"
+                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"
                    TextWrapping="Wrap" Margin="0,4,0,0"/>
     </StackPanel>
 </Window>
