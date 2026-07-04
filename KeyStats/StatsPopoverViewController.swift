@@ -665,20 +665,26 @@ class StatsPopoverViewController: NSViewController {
 
     private func startUpdateAvailabilityUpdates() {
         if let token = updateAvailabilityToken {
-            UpdateManager.shared.removeUpdateAvailabilityHandler(token)
+            UpdateManager.shared.removeUpdateButtonStateHandler(token)
         }
 
-        updateAvailabilityToken = UpdateManager.shared.addUpdateAvailabilityHandler { [weak self] hasUpdate in
-            self?.checkUpdatesButton.isHidden = !hasUpdate
+        updateAvailabilityToken = UpdateManager.shared.addUpdateButtonStateHandler { [weak self] state in
+            self?.applyUpdateButtonState(state)
         }
         UpdateManager.shared.probeForUpdateAvailability()
     }
 
     private func stopUpdateAvailabilityUpdates() {
         if let token = updateAvailabilityToken {
-            UpdateManager.shared.removeUpdateAvailabilityHandler(token)
+            UpdateManager.shared.removeUpdateButtonStateHandler(token)
         }
         updateAvailabilityToken = nil
+    }
+
+    private func applyUpdateButtonState(_ state: UpdateButtonState) {
+        checkUpdatesButton.isHidden = state.isHidden
+        checkUpdatesButton.isEnabled = state.isEnabled
+        updatePreferredPopoverSizeIfNeeded()
     }
 
     private func scheduleStatsRefresh() {
