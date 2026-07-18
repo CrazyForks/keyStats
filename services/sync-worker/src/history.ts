@@ -42,13 +42,19 @@ export async function ensureRecordCanBeArchived(
   vaultId: string,
   record: EncryptedRecord,
 ): Promise<"insert" | "unchanged"> {
-  const latest = await env.DB.prepare(
-    `SELECT revision, ciphertext_hash
-       FROM history_changes
-      WHERE vault_id = ?1 AND record_id = ?2
-      ORDER BY revision DESC, cursor DESC
-      LIMIT 1`,
-  ).bind(vaultId, record.recordId).first<{ revision: number; ciphertext_hash: string | null }>();
+  const [latest] = await latestHistoryRecords(env, vaultId, [record]);
+  return archiveDisposition(record, latest ?? null);
+}
+
+interface LatestHistoryRecord {
+  revision: number;
+  ciphertext_hash: string | null;
+}
+
+function archiveDisposition(
+  record: EncryptedRecord,
+  latest: LatestHistoryRecord | null,
+): "insert" | "unchanged" {
   if (!latest) return "insert";
   if (record.revision < latest.revision) {
     throw new ApiError(409, "stale_revision", "An archived record has an older revision");
@@ -58,6 +64,31 @@ export async function ensureRecordCanBeArchived(
     throw new ApiError(409, "revision_conflict", "The same revision has different encrypted content");
   }
   return "insert";
+}
+
+async function latestHistoryRecords(
+  env: Env,
+  vaultId: string,
+  records: EncryptedRecord[],
+): Promise<Array<LatestHistoryRecord | null>> {
+  if (records.length === 0) return [];
+  const results = await env.DB.batch<LatestHistoryRecord>(records.map((record) => env.DB.prepare(
+    `SELECT revision, ciphertext_hash
+       FROM history_changes
+      WHERE vault_id = ?1 AND record_id = ?2
+      ORDER BY revision DESC, cursor DESC
+      LIMIT 1`,
+  ).bind(vaultId, record.recordId)));
+  return results.map((result) => result.results[0] ?? null);
+}
+
+async function recordsNeedingInsert(
+  env: Env,
+  vaultId: string,
+  records: EncryptedRecord[],
+): Promise<EncryptedRecord[]> {
+  const latest = await latestHistoryRecords(env, vaultId, records);
+  return records.filter((record, index) => archiveDisposition(record, latest[index] ?? null) === "insert");
 }
 
 export async function hasArchivedRecord(env: Env, vaultId: string, recordId: string): Promise<boolean> {
@@ -75,8 +106,8 @@ export async function storeHistoryRecords(
   now: number,
 ): Promise<void> {
   assertUniqueHistoryRecords(records);
-  for (const record of records) {
-    if (await ensureRecordCanBeArchived(env, vaultId, record) === "unchanged") continue;
+  const recordsToInsert = await recordsNeedingInsert(env, vaultId, records);
+  const prepared = recordsToInsert.map((record) => {
     // Each revision owns an independent object. This lets retention remove a
     // superseded revision after seven days without keeping or rewriting a pack
     // that also contains live revisions.
@@ -86,48 +117,40 @@ export async function storeHistoryRecords(
     // one object without allowing a conflicting same-revision envelope to
     // overwrite the accepted payload.
     const r2Key = `history/${vaultId}/${deviceId}/${record.recordId}/${record.revision}-${record.ciphertextHash}.json`;
-    await env.HISTORY.put(r2Key, payload, {
-      httpMetadata: { contentType: "application/json" },
-      customMetadata: { schemaVersion: "1", recordCount: "1" },
-    });
-    try {
-      await env.DB.prepare(
-        `INSERT INTO history_changes(
+    return { record, payload, r2Key };
+  });
+  if (prepared.length === 0) return;
+
+  await Promise.all(prepared.map(({ payload, r2Key }) => env.HISTORY.put(r2Key, payload, {
+    httpMetadata: { contentType: "application/json" },
+    customMetadata: { schemaVersion: "1", recordCount: "1" },
+  })));
+
+  try {
+    await env.DB.batch(prepared.map(({ record, r2Key }) => env.DB.prepare(
+      `INSERT INTO history_changes(
            vault_id, device_id, record_id, revision, tombstone,
            nonce, tag, ciphertext_hash, ciphertext_size,
            r2_key, r2_entry_index, created_at
          ) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9, 0, ?10)`,
-      ).bind(
-        vaultId,
-        deviceId,
-        record.recordId,
-        record.revision,
-        record.nonce,
-        record.tag,
-        record.ciphertextHash,
-        decodeBase64(record.ciphertext, "record.ciphertext", 65_536).length,
-        r2Key,
-        now,
-      ).run();
-    } catch (error) {
-      const latest = await env.DB.prepare(
-        `SELECT revision, ciphertext_hash
-           FROM history_changes
-          WHERE vault_id = ?1 AND record_id = ?2
-          ORDER BY revision DESC, cursor DESC
-          LIMIT 1`,
-      ).bind(vaultId, record.recordId).first<{ revision: number; ciphertext_hash: string | null }>();
-      if (latest?.revision === record.revision && latest.ciphertext_hash === record.ciphertextHash) continue;
-      if (latest && record.revision < latest.revision) {
-        throw new ApiError(409, "stale_revision", "An archived record has an older revision");
-      }
-      if (latest?.revision === record.revision && latest.ciphertext_hash !== record.ciphertextHash) {
-        throw new ApiError(409, "revision_conflict", "The same revision has different encrypted content");
-      }
-      // The object is deliberately left for the 24-hour orphan cleanup. Do not
-      // risk deleting an object while classifying a concurrent successful write.
-      throw error;
-    }
+    ).bind(
+      vaultId,
+      deviceId,
+      record.recordId,
+      record.revision,
+      record.nonce,
+      record.tag,
+      record.ciphertextHash,
+      decodeBase64(record.ciphertext, "record.ciphertext", 65_536).length,
+      r2Key,
+      now,
+    )));
+  } catch (error) {
+    const stillPending = await recordsNeedingInsert(env, vaultId, recordsToInsert);
+    if (stillPending.length === 0) return;
+    // Uploaded objects are deliberately left for the 24-hour orphan cleanup.
+    // Do not risk deleting an object while classifying a concurrent successful write.
+    throw error;
   }
 }
 
@@ -137,9 +160,7 @@ export async function validateHistoryRecords(
   records: EncryptedRecord[],
 ): Promise<void> {
   assertUniqueHistoryRecords(records);
-  for (const record of records) {
-    await ensureRecordCanBeArchived(env, vaultId, record);
-  }
+  await recordsNeedingInsert(env, vaultId, records);
 }
 
 export async function readHistoryPage(

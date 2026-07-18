@@ -515,6 +515,33 @@ describe("sync Worker", () => {
     ).bind(VAULT_A).first("count")).toBe(17);
   });
 
+  it("rejects a conflicting record in an archive batch before storing its peers", async () => {
+    const created = await createVault(VAULT_A, DEVICE_A, RECOVERY_A);
+    const accepted = await encryptedRecord(DEVICE_A, recordId(90), 2, [9, 0]);
+    const seedRequest = {
+      reason: "bootstrap",
+      historyCursor: 0,
+      archives: [accepted],
+      bootstrapComplete: false,
+    } as const;
+    expect((await sync(created.deviceToken, "batch-conflict-seed", seedRequest)).status).toBe(200);
+    expect((await sync(created.deviceToken, "batch-conflict-seed", seedRequest)).status).toBe(200);
+
+    const pending = await encryptedRecord(DEVICE_A, recordId(91), 1, [9, 1]);
+    const conflict = await encryptedRecord(DEVICE_A, accepted.recordId, 2, [9, 2]);
+    const rejected = await sync(created.deviceToken, "batch-conflict-rejected", {
+      reason: "bootstrap",
+      historyCursor: 0,
+      archives: [pending, conflict],
+      bootstrapComplete: true,
+    });
+    expect(rejected.status).toBe(409);
+    expect(await errorCode(rejected)).toBe("revision_conflict");
+    expect(await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM history_changes WHERE vault_id = ?1 AND record_id = ?2",
+    ).bind(VAULT_A, pending.recordId).first("count")).toBe(0);
+  });
+
   it("rejects a stale previous-current archive before replacing the current record", async () => {
     const created = await createVault(VAULT_A, DEVICE_A, RECOVERY_A);
     await pairDevice(created.deviceToken, DEVICE_B);
