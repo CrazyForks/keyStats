@@ -46,6 +46,9 @@ public class StatsManager : IDisposable
     private bool _pendingMouseMoveUpdate;
     private bool _pendingSettingsSave;
     private volatile bool _isDisposed;
+    private DisplayStatsAggregator? _displayStatsAggregator;
+    private Func<bool>? _isSyncEnabledProvider;
+    private Func<bool>? _isImportBlockedProvider;
 
     // KPS/CPS peak tracking (1-second sliding window)
     private readonly Queue<DateTime> _recentKeyTimestamps = new();
@@ -60,6 +63,7 @@ public class StatsManager : IDisposable
 
     public event Action? StatsUpdateRequested;
     public event Action<StatsUpdateKind>? StatsChanged;
+    public event Action? LocalStatsReset;
 
     private StatsManager()
     {
@@ -545,6 +549,22 @@ public class StatsManager : IDisposable
         }
     }
 
+    public void ConfigureSyncDisplay(
+        DisplayStatsAggregator aggregator,
+        Func<bool> isSyncEnabledProvider,
+        Func<bool>? isImportBlockedProvider = null)
+    {
+        _displayStatsAggregator = aggregator;
+        _isSyncEnabledProvider = isSyncEnabledProvider;
+        _isImportBlockedProvider = isImportBlockedProvider ?? isSyncEnabledProvider;
+        NotifyStatsUpdate();
+    }
+
+    public void NotifyRemoteStatsChanged()
+    {
+        NotifyStatsUpdate();
+    }
+
     #region Persistence
 
     private void SaveStats()
@@ -776,6 +796,7 @@ public class StatsManager : IDisposable
             payload = new ExportPayload
             {
                 Version = 1,
+                Scope = "currentDevice",
                 ExportedAt = DateTime.UtcNow,
                 CurrentStats = currentCopy,
                 History = exportHistory
@@ -798,6 +819,11 @@ public class StatsManager : IDisposable
 
     public void ImportStatsData(byte[] data, ImportMode mode)
     {
+        if (_isImportBlockedProvider?.Invoke() == true)
+        {
+            throw new InvalidOperationException(KeyStats.Properties.Strings.Error_ImportDisabledWhileSyncing);
+        }
+
         if (data == null || data.Length == 0)
         {
             throw new InvalidDataException(KeyStats.Properties.Strings.Error_ImportEmpty);
@@ -826,6 +852,11 @@ public class StatsManager : IDisposable
         if (payload.Version != 1)
         {
             throw new InvalidDataException(KeyStats.Properties.Strings.Error_ImportUnsupportedVersion);
+        }
+        if (!string.IsNullOrWhiteSpace(payload.Scope) &&
+            !string.Equals(payload.Scope, "currentDevice", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(KeyStats.Properties.Strings.Error_ImportInvalidFormat);
         }
 
         lock (_lock)
@@ -1071,6 +1102,7 @@ public class StatsManager : IDisposable
     private sealed class ExportPayload
     {
         public int Version { get; set; }
+        public string? Scope { get; set; }
         public DateTime ExportedAt { get; set; } = DateTime.UtcNow;
         public DailyStats CurrentStats { get; set; } = new();
         public Dictionary<string, DailyStats> History { get; set; } = new();
@@ -1141,6 +1173,7 @@ public class StatsManager : IDisposable
         UpdateNotificationBaselines();
         NotifyStatsUpdate();
         SaveStats();
+        LocalStatsReset?.Invoke();
     }
 
     private void SynchronizeCurrentDay(DateTime targetDate, bool notifyStatsUpdate)
@@ -1274,6 +1307,17 @@ public class StatsManager : IDisposable
         }
     }
 
+    public Dictionary<string, DailyStats> GetLocalHistorySnapshot()
+    {
+        lock (_lock)
+        {
+            var snapshot = CloneHistorySnapshot(History);
+            snapshot[CurrentStats.Date.ToString("yyyy-MM-dd")] =
+                CloneDailyStats(CurrentStats, CurrentStats.Date.Date);
+            return snapshot;
+        }
+    }
+
     public List<AppStats> GetAppStatsSorted(int limit = 5)
     {
         lock (_lock)
@@ -1339,6 +1383,17 @@ public class StatsManager : IDisposable
                 }
             }
 
+            if (_displayStatsAggregator != null && _isSyncEnabledProvider?.Invoke() == true)
+            {
+                foreach (var candidate in _displayStatsAggregator.GetRemoteDays())
+                {
+                    if (candidate <= today && candidate < start)
+                    {
+                        start = candidate;
+                    }
+                }
+            }
+
             return (start, today);
         }
     }
@@ -1398,6 +1453,15 @@ public class StatsManager : IDisposable
     }
 
     private DailyStats GetDailyStats(DateTime date)
+    {
+        var local = GetLocalDailyStats(date);
+
+        return _displayStatsAggregator != null && _isSyncEnabledProvider?.Invoke() == true
+            ? _displayStatsAggregator.Aggregate(date.Date, local)
+            : local;
+    }
+
+    private DailyStats GetLocalDailyStats(DateTime date)
     {
         if (date.Date == CurrentStats.Date.Date)
         {
@@ -1675,17 +1739,55 @@ public class StatsManager : IDisposable
     public enum HistoryMetric { KeyPresses, Clicks, MouseDistance, ScrollDistance }
     public enum KeyHistoryRange { Today, Week, Month, All }
 
+    public sealed class HistoryTrendSeries
+    {
+        public HistoryTrendSeries(
+            List<(DateTime Date, double Value)> display,
+            List<(DateTime Date, double Value)>? local)
+        {
+            Display = display;
+            Local = local;
+        }
+
+        public List<(DateTime Date, double Value)> Display { get; }
+        public List<(DateTime Date, double Value)>? Local { get; }
+    }
+
     public List<(DateTime Date, double Value)> GetHistorySeries(HistoryRange range, HistoryMetric metric)
+    {
+        return GetHistoryTrendSeries(range, metric).Display;
+    }
+
+    public HistoryTrendSeries GetHistoryTrendSeries(HistoryRange range, HistoryMetric metric)
     {
         var dates = GetDatesInRange(range);
         lock (_lock)
         {
-            return dates.Select(date =>
+            var localSeries = dates
+                .Select(date =>
+                {
+                    var stats = GetLocalDailyStats(date);
+                    return (date, GetMetricValue(metric, stats));
+                })
+                .ToList();
+
+            if (metric is HistoryMetric.MouseDistance or HistoryMetric.ScrollDistance ||
+                _displayStatsAggregator == null ||
+                _isSyncEnabledProvider?.Invoke() != true ||
+                !_displayStatsAggregator.GetRemoteDays().Any())
             {
-                var key = date.ToString("yyyy-MM-dd");
-                var stats = History.TryGetValue(key, out var s) ? s : new DailyStats(date);
-                return (date, GetMetricValue(metric, stats));
-            }).ToList();
+                return new HistoryTrendSeries(localSeries, null);
+            }
+
+            var displaySeries = dates
+                .Select(date =>
+                {
+                    var stats = GetDailyStats(date);
+                    return (date, GetMetricValue(metric, stats));
+                })
+                .ToList();
+
+            return new HistoryTrendSeries(displaySeries, localSeries);
         }
     }
 
@@ -1758,6 +1860,10 @@ public class StatsManager : IDisposable
                 .Where(x => x <= today)
                 .ToHashSet();
             dates.Add(today);
+            if (_displayStatsAggregator != null && _isSyncEnabledProvider?.Invoke() == true)
+            {
+                dates.UnionWith(_displayStatsAggregator.GetRemoteDays().Where(date => date <= today));
+            }
             return dates.OrderBy(x => x).ToList();
         }
 

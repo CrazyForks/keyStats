@@ -99,6 +99,19 @@ Issue type?
 - ✅ Implement Codable for data structures needing persistence
 - ✅ Batch UI updates to reduce main thread blocking
 
+### 🟣 Automatic Commit Policy
+
+- ✅ After a feature or module is fully implemented and its relevant checks pass, automatically create an atomic Git commit without waiting for an additional user request
+- ✅ Before committing, inspect `git status` again and include only files changed for the completed feature or module
+- ✅ Do not automatically commit incomplete work, failed verification, or unrelated existing changes
+- ✅ Follow the repository's commit message and Git safety rules for every automatic commit
+
+### ☁️ Sync Worker Staging Deployment
+
+- ✅ After changing the staging sync service (`services/sync-worker/**`, `contracts/sync/v1/**`, or its staging workflow) and passing the relevant checks, deploy the staging Worker directly without waiting for additional confirmation
+- ✅ Apply pending staging D1 migrations before deploying, and always target the explicit `staging` Wrangler environment
+- ✅ Never deploy the production Worker without explicit user authorization in the current conversation
+
 ---
 
 ## Build & Development Commands
