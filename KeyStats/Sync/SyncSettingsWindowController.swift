@@ -250,6 +250,10 @@ private final class SyncSettingsViewController: NSViewController {
             } else {
                 detailLabel.stringValue = NSLocalizedString("sync.status.syncing.detail", comment: "")
             }
+        } else if coordinator.isWaitingForPairingRefresh {
+            statusIndicator.textColor = .systemYellow
+            statusLabel.stringValue = NSLocalizedString("sync.status.pairingWaiting", comment: "")
+            detailLabel.stringValue = NSLocalizedString("sync.status.pairingWaiting.detail", comment: "")
         } else if coordinator.lastError != nil &&
                     (coordinator.canRetryBootstrap || state.activeDeviceCount >= 2) {
             statusIndicator.textColor = .systemRed

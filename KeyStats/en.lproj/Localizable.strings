@@ -342,6 +342,8 @@
 "sync.error.invalidResponse" = "The sync service returned an invalid response.";
 "sync.error.notFound" = "The sync group or pairing session was not found.";
 "sync.error.conflict" = "The service rejected a conflicting snapshot revision.";
+"sync.status.pairingWaiting" = "Waiting for the other device…";
+"sync.status.pairingWaiting.detail" = "The other device is uploading its encrypted history. Sync will continue automatically when it finishes.";
 "sync.error.rateLimited" = "Too many sync attempts. Wait until the retry time.";
 "sync.error.server" = "The sync service is temporarily unavailable.";
 "sync.error.corruptState" = "The local sync state is damaged. Local statistics were kept; recover or re-pair this device.";

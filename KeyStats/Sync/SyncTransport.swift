@@ -143,6 +143,7 @@ enum SyncTransportError: LocalizedError, Equatable {
     case unauthorized
     case forbidden
     case notFound
+    case pairingRefreshPending
     case conflict
     case replacementDeviceNotFound
     case maximumDevices(vaultId: String?, devices: [SyncEncryptedDeviceV1])
@@ -156,6 +157,7 @@ enum SyncTransportError: LocalizedError, Equatable {
         case .invalidResponse: return NSLocalizedString("sync.error.invalidResponse", comment: "")
         case .unauthorized, .forbidden: return NSLocalizedString("sync.error.authenticationFailed", comment: "")
         case .notFound: return NSLocalizedString("sync.error.notFound", comment: "")
+        case .pairingRefreshPending: return NSLocalizedString("sync.status.pairingWaiting.detail", comment: "")
         case .conflict, .replacementDeviceNotFound: return NSLocalizedString("sync.error.conflict", comment: "")
         case .maximumDevices: return NSLocalizedString("sync.error.maximumDevices", comment: "")
         case .singleDevice: return NSLocalizedString("sync.error.singleDevice", comment: "")
@@ -320,6 +322,9 @@ final class CloudflareSyncTransport: SyncTransport {
         case 403: return .forbidden
         case 404: return .notFound
         case 409:
+            if envelope?.code == "bootstrap_already_consumed" {
+                return .pairingRefreshPending
+            }
             if envelope?.code == "single_device_sync_disabled",
                envelope?.activeDeviceCount == 1 {
                 return .singleDevice(activeDeviceCount: 1)

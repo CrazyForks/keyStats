@@ -446,6 +446,39 @@ final class SyncCoreTests: XCTestCase {
         }
     }
 
+    func testTransportMapsConsumedPairingBypassToPendingRefresh() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SyncURLProtocolStub.self]
+        let session = URLSession(configuration: configuration)
+        SyncURLProtocolStub.response = (
+            statusCode: 409,
+            body: Data(#"{"code":"bootstrap_already_consumed","message":"pending"}"#.utf8)
+        )
+        let transport = CloudflareSyncTransport(
+            baseURL: try XCTUnwrap(URL(string: "https://sync.test.workers.dev")),
+            session: session
+        )
+        let request = SyncRequestV1(
+            reason: .pairing,
+            historyCursor: 0,
+            currentSnapshot: nil,
+            archives: [],
+            encryptedDeviceProfile: nil,
+            bootstrapComplete: true
+        )
+
+        do {
+            let _: SyncResponseV1 = try await transport.sync(
+                request,
+                bearerToken: "token",
+                idempotencyKey: "pairing-refresh-pending-test"
+            )
+            XCTFail("Expected the pending pairing refresh response to be mapped")
+        } catch let error as SyncTransportError {
+            XCTAssertEqual(error, .pairingRefreshPending)
+        }
+    }
+
     func testTransportMapsMaximumDevicesWithEncryptedReplacementChoices() async throws {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [SyncURLProtocolStub.self]

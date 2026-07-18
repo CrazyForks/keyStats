@@ -342,6 +342,8 @@
 "sync.error.invalidResponse" = "同步服务返回了无效响应。";
 "sync.error.notFound" = "找不到同步组或配对会话。";
 "sync.error.conflict" = "服务端拒绝了版本冲突的快照。";
+"sync.status.pairingWaiting" = "正在等待另一台设备…";
+"sync.status.pairingWaiting.detail" = "另一台设备正在上传加密历史数据，完成后会自动继续同步。";
 "sync.error.rateLimited" = "同步尝试过于频繁，请等待重试时间。";
 "sync.error.server" = "同步服务暂时不可用。";
 "sync.error.corruptState" = "本地同步状态已损坏。本机统计已保留，请恢复或重新配对。";

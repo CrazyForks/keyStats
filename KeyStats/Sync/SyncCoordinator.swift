@@ -95,9 +95,11 @@ final class SyncCoordinator {
     private var stateRefreshTimer: Timer?
     private var appDidBecomeActiveObserver: NSObjectProtocol?
     private var pairingRefreshTask: Task<Void, Never>?
+    private var pairingRefreshID: UUID?
     private var joiningPairing: JoiningPairingState?
     private var approvingPairing: ApprovingPairingState?
     private(set) var isSyncing = false
+    private(set) var isWaitingForPairingRefresh = false
     private(set) var syncProgress: SyncProgress?
     private var isRefreshingState = false
     private(set) var lastError: Error?
@@ -1074,7 +1076,12 @@ final class SyncCoordinator {
             try persistAndNotify()
             scheduleIfNeeded()
         } catch {
-            lastError = error
+            if reason == .pairing,
+               case SyncTransportError.pairingRefreshPending = error {
+                lastError = nil
+            } else {
+                lastError = error
+            }
             if case SyncTransportError.singleDevice(let activeDeviceCount) = error {
                 state.activeDeviceCount = activeDeviceCount
                 state.automaticRetryAt = nil
@@ -1510,7 +1517,19 @@ final class SyncCoordinator {
 
     private func scheduleApproverPairingRefresh(until expiresAt: Date) {
         pairingRefreshTask?.cancel()
+        let refreshID = UUID()
+        pairingRefreshID = refreshID
+        isWaitingForPairingRefresh = true
+        notifyStateChanged()
         pairingRefreshTask = Task { @MainActor [weak self] in
+            defer {
+                if self?.pairingRefreshID == refreshID {
+                    self?.pairingRefreshTask = nil
+                    self?.pairingRefreshID = nil
+                    self?.isWaitingForPairingRefresh = false
+                    self?.notifyStateChanged()
+                }
+            }
             let retryDelays: [TimeInterval] = [5, 10, 20, 40, 60]
             var attempt = 0
             while !Task.isCancelled, Date() < expiresAt {
@@ -1525,20 +1544,17 @@ final class SyncCoordinator {
                 guard let self, !Task.isCancelled else { return }
                 do {
                     try await self.performSync(reason: .pairing, bypassOrdinaryGating: true)
-                    self.pairingRefreshTask = nil
                     return
-                } catch SyncTransportError.conflict {
+                } catch SyncTransportError.pairingRefreshPending {
                     attempt += 1
                 } catch SyncTransportError.singleDevice {
                     attempt += 1
                 } catch SyncCoordinatorError.syncInProgress {
                     attempt += 1
                 } catch {
-                    self.pairingRefreshTask = nil
                     return
                 }
             }
-            self?.pairingRefreshTask = nil
         }
     }
 
@@ -1630,6 +1646,8 @@ final class SyncCoordinator {
         stateRefreshTimer = nil
         pairingRefreshTask?.cancel()
         pairingRefreshTask = nil
+        pairingRefreshID = nil
+        isWaitingForPairingRefresh = false
         try credentialStore.clear()
         try cache.clear()
         let baseURL = buildServiceURL?.absoluteString ?? ""
