@@ -117,7 +117,13 @@ Data stays on the local device by default. When you explicitly enable multi-devi
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=debugtheworldbot/keyStats&type=date&legend=top-left)](https://www.star-history.com/#debugtheworldbot/keyStats&type=date&legend=top-left)
+<a href="https://www.star-history.com/?repos=debugtheworldbot%2FkeyStats&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=debugtheworldbot/keyStats&type=date&theme=dark&legend=top-left&sealed_token=FpskHdzuiI04Ouvje3C5300qrmRVEqE9-9jgN6U8DiCwq4cSK_d4KIvqw0QF-wmA5E1YMay-G6z1Anl_013aAwdl5d2oyITvOHAaug6UWkJRpPQn-N_7j4lbesA1Vh4MAQiRCfIqZLxvVZRD3S4r6L4zbSHX4KkPlia4Cxnvz6GGJfTrQVUCpuPWfhRC" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=debugtheworldbot/keyStats&type=date&legend=top-left&sealed_token=FpskHdzuiI04Ouvje3C5300qrmRVEqE9-9jgN6U8DiCwq4cSK_d4KIvqw0QF-wmA5E1YMay-G6z1Anl_013aAwdl5d2oyITvOHAaug6UWkJRpPQn-N_7j4lbesA1Vh4MAQiRCfIqZLxvVZRD3S4r6L4zbSHX4KkPlia4Cxnvz6GGJfTrQVUCpuPWfhRC" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=debugtheworldbot/keyStats&type=date&legend=top-left&sealed_token=FpskHdzuiI04Ouvje3C5300qrmRVEqE9-9jgN6U8DiCwq4cSK_d4KIvqw0QF-wmA5E1YMay-G6z1Anl_013aAwdl5d2oyITvOHAaug6UWkJRpPQn-N_7j4lbesA1Vh4MAQiRCfIqZLxvVZRD3S4r6L4zbSHX4KkPlia4Cxnvz6GGJfTrQVUCpuPWfhRC" />
+ </picture>
+</a>
 
 ## License
 
