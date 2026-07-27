@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace KeyStats.Models;
@@ -17,7 +18,42 @@ public static class SyncProtocol
     public const int MaximumHistoryPagesPerAttempt = 256;
     public const int MaximumAutomaticFailuresPerUtcDay = 3;
     public static readonly TimeSpan ManualSyncInterval = TimeSpan.FromHours(1);
-    public static readonly TimeSpan AutomaticSyncInterval = TimeSpan.FromHours(24);
+    public static readonly TimeSpan AutomaticSyncInterval = TimeSpan.FromHours(12);
+}
+
+public static class SyncSchedulePolicy
+{
+    public static bool ShouldPrioritizeDailyLaunchSync(
+        SyncState state,
+        DateTime nowUtc,
+        TimeZoneInfo? localTimeZone = null)
+    {
+        if (!state.IsEnabled || state.NeedsRepair || state.NeedsBootstrap ||
+            state.NeedsHistoryBootstrap || state.NeedsStateRefreshBeforeBootstrap ||
+            state.PendingVaultDeletion || !string.IsNullOrWhiteSpace(state.PendingProvisioningKind) ||
+            state.ActiveDeviceCount < 2)
+        {
+            return false;
+        }
+
+        nowUtc = nowUtc.Kind == DateTimeKind.Utc ? nowUtc : nowUtc.ToUniversalTime();
+        if (state.AutomaticFailureCount > 0 &&
+            string.Equals(
+                state.AutomaticFailureUtcDay,
+                nowUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+        if (!state.LastSuccessfulSyncAtUtc.HasValue) return true;
+
+        var lastSuccessUtc = state.LastSuccessfulSyncAtUtc.Value.Kind == DateTimeKind.Utc
+            ? state.LastSuccessfulSyncAtUtc.Value
+            : state.LastSuccessfulSyncAtUtc.Value.ToUniversalTime();
+        var timeZone = localTimeZone ?? TimeZoneInfo.Local;
+        return TimeZoneInfo.ConvertTimeFromUtc(lastSuccessUtc, timeZone).Date !=
+               TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timeZone).Date;
+    }
 }
 
 public sealed class CoreDaySnapshotV1

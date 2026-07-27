@@ -94,4 +94,64 @@ public sealed class SyncSchedulingTests
         Assert.IsNotNull(timerField);
         Assert.IsNull(timerField!.GetValue(coordinator));
     }
+
+    [TestMethod]
+    public void AutomaticSchedule_UsesTwelveHourInterval()
+    {
+        TestPlatform.RequireWindows();
+        using var directory = new TestDirectory();
+        var now = new DateTime(2026, 7, 27, 4, 0, 0, DateTimeKind.Utc);
+        var stateStore = new SyncStateStore(directory.Path);
+        stateStore.Save(new SyncState
+        {
+            IsEnabled = true,
+            VaultId = "vault-id",
+            DeviceId = "device-id",
+            DeviceName = "Test device",
+            ActiveDeviceCount = 2,
+            RemainingDailySyncs = 8,
+            LastSuccessfulSyncAtUtc = now,
+            NextAutomaticSyncAtUtc = now.AddHours(24)
+        });
+        new SyncCredentialStore(directory.Path).Save(new SyncCredentials
+        {
+            VaultSeed = new byte[16],
+            DeviceToken = "device-id.test-token"
+        });
+
+        var statsManager = (StatsManager)FormatterServices.GetUninitializedObject(typeof(StatsManager));
+        using var coordinator = new SyncCoordinator(statsManager, directory.Path, null, "test");
+        var method = typeof(SyncCoordinator).GetMethod(
+            "EnsureAutomaticAttemptLocked",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method);
+
+        method!.Invoke(coordinator, new object[] { now });
+
+        var dueAt = stateStore.Load().NextAutomaticSyncAtUtc;
+        Assert.IsTrue(dueAt.HasValue);
+        Assert.AreEqual(now.AddHours(12), dueAt.Value);
+    }
+
+    [TestMethod]
+    public void DailyLaunchSync_RunsOnlyWhenLastSuccessIsBeforeLocalDay()
+    {
+        var timeZone = TimeZoneInfo.CreateCustomTimeZone(
+            "UTC+08",
+            TimeSpan.FromHours(8),
+            "UTC+08",
+            "UTC+08");
+        var now = new DateTime(2026, 7, 26, 16, 30, 0, DateTimeKind.Utc);
+        var state = new SyncState
+        {
+            IsEnabled = true,
+            ActiveDeviceCount = 2,
+            LastSuccessfulSyncAtUtc = now.AddHours(-1)
+        };
+
+        Assert.IsTrue(SyncSchedulePolicy.ShouldPrioritizeDailyLaunchSync(state, now, timeZone));
+
+        state.LastSuccessfulSyncAtUtc = now.AddMinutes(-15);
+        Assert.IsFalse(SyncSchedulePolicy.ShouldPrioritizeDailyLaunchSync(state, now, timeZone));
+    }
 }

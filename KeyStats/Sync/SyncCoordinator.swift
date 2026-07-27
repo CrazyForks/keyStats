@@ -190,6 +190,11 @@ final class SyncCoordinator {
                 try? await self?.retryBootstrapWork(reason: .bootstrap)
             }
         } else {
+            let now = Date()
+            if SyncSchedulePolicy.shouldPrioritizeDailyLaunchSync(state: state, now: now) {
+                state.automaticDueAt = now
+                try? stateStore.save(state)
+            }
             scheduleIfNeeded()
             Task { @MainActor [weak self] in await self?.refreshCloudStateIfNeeded(force: true) }
         }
@@ -1333,12 +1338,22 @@ final class SyncCoordinator {
                   state.remainingSuccessfulSyncsToday <= 0 {
             target = nextUTCMidnight(after: now).addingTimeInterval(stableJitter(for: nextUTCMidnight(after: now)))
         } else if let due = state.automaticDueAt {
-            target = due
+            if let lastSuccessfulSyncAt = state.lastSuccessfulSyncAt {
+                let base = lastSuccessfulSyncAt.addingTimeInterval(SyncConstants.automaticSyncInterval)
+                let expectedDue = base
+                target = min(due, expectedDue)
+                if target != due {
+                    state.automaticDueAt = target
+                    try? stateStore.save(state)
+                }
+            } else {
+                target = due
+            }
         } else {
             let base = (state.lastSuccessfulSyncAt ?? now).addingTimeInterval(
                 state.lastSuccessfulSyncAt == nil ? 0 : SyncConstants.automaticSyncInterval
             )
-            let due = base.addingTimeInterval(stableJitter(for: base))
+            let due = base
             state.automaticDueAt = due
             try? stateStore.save(state)
             target = due
@@ -1357,7 +1372,7 @@ final class SyncCoordinator {
     private func scheduleSingleDeviceStateRefresh() {
         let now = Date()
         let target = (state.lastStateRefreshAt ?? .distantPast)
-            .addingTimeInterval(SyncConstants.automaticSyncInterval)
+            .addingTimeInterval(SyncConstants.stateRefreshInterval)
         let due = max(now.addingTimeInterval(0.25), target)
         stateRefreshTimer = Timer.scheduledTimer(
             withTimeInterval: max(0.25, due.timeIntervalSince(now)),
@@ -1379,7 +1394,7 @@ final class SyncCoordinator {
               !isRefreshingState,
               !isSyncing else { return }
         if !force, let last = state.lastStateRefreshAt,
-           Date().timeIntervalSince(last) < SyncConstants.automaticSyncInterval {
+           Date().timeIntervalSince(last) < SyncConstants.stateRefreshInterval {
             scheduleIfNeeded()
             return
         }

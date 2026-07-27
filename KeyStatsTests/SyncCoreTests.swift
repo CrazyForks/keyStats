@@ -274,7 +274,7 @@ final class SyncCoreTests: XCTestCase {
         XCTAssertEqual(SyncSchedulePolicy.availability(state: state, enforcesRateLimits: true), .dailyLimit)
     }
 
-    func testHourlyManualAndTwentyFourHourAutomaticSchedulePolicy() {
+    func testHourlyManualAndTwelveHourAutomaticSchedulePolicy() {
         let now = Date(timeIntervalSince1970: 1_783_944_000)
         var state = SyncPersistentState.fresh(serverBaseURL: "https://sync.example.workers.dev")
         state.vaultId = "vault"
@@ -298,13 +298,13 @@ final class SyncCoreTests: XCTestCase {
             enforcesRateLimits: true
         ), .available)
 
-        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(24 * 60 * 60 - 1))
+        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(12 * 60 * 60 - 1))
         XCTAssertFalse(SyncSchedulePolicy.shouldScheduleAutomaticSync(
             state: state,
             now: now,
             enforcesRateLimits: true
         ))
-        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(24 * 60 * 60))
+        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(12 * 60 * 60))
         XCTAssertTrue(SyncSchedulePolicy.shouldScheduleAutomaticSync(
             state: state,
             now: now,
@@ -317,6 +317,35 @@ final class SyncCoreTests: XCTestCase {
             state: state,
             now: now,
             enforcesRateLimits: true
+        ))
+    }
+
+    func testDailyLaunchSyncRunsOnlyWhenLastSuccessIsBeforeLocalDay() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 8 * 60 * 60))
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 27,
+            hour: 0,
+            minute: 30
+        )))
+        var state = SyncPersistentState.fresh(serverBaseURL: "https://sync.example.workers.dev")
+        state.vaultId = "vault"
+        state.activeDeviceCount = 2
+
+        state.lastSuccessfulSyncAt = now.addingTimeInterval(-60 * 60)
+        XCTAssertTrue(SyncSchedulePolicy.shouldPrioritizeDailyLaunchSync(
+            state: state,
+            now: now,
+            calendar: calendar
+        ))
+
+        state.lastSuccessfulSyncAt = now.addingTimeInterval(-15 * 60)
+        XCTAssertFalse(SyncSchedulePolicy.shouldPrioritizeDailyLaunchSync(
+            state: state,
+            now: now,
+            calendar: calendar
         ))
     }
 

@@ -236,8 +236,17 @@ public sealed class SyncCoordinator : IDisposable
                         ScheduleStateRefreshLocked(DateTime.UtcNow);
                         return;
                     }
-                    EnsureAutomaticAttemptLocked(DateTime.UtcNow);
-                    ScheduleAutomaticTimerLocked(DateTime.UtcNow);
+                    var now = DateTime.UtcNow;
+                    if (SyncSchedulePolicy.ShouldPrioritizeDailyLaunchSync(_state, now))
+                    {
+                        _state.NextAutomaticSyncAtUtc = now;
+                        _stateStore.Save(_state);
+                    }
+                    else
+                    {
+                        EnsureAutomaticAttemptLocked(now);
+                    }
+                    ScheduleAutomaticTimerLocked(now);
                 }
             }
         }
@@ -2468,15 +2477,27 @@ public sealed class SyncCoordinator : IDisposable
 
     private void EnsureAutomaticAttemptLocked(DateTime now)
     {
-        if (_state.NextAutomaticSyncAtUtc.HasValue) return;
         if (_state.LastSuccessfulSyncAtUtc.HasValue)
         {
             var baseDue = _state.LastSuccessfulSyncAtUtc.Value + SyncProtocol.AutomaticSyncInterval;
-            _state.NextAutomaticSyncAtUtc = baseDue + GetDeterministicJitter(baseDue);
+            var expectedDue = baseDue;
+            var hasAutomaticFailureToday =
+                _state.AutomaticFailureCount > 0 &&
+                string.Equals(_state.AutomaticFailureUtcDay, UtcDay(now), StringComparison.Ordinal);
+            if (_state.NextAutomaticSyncAtUtc.HasValue &&
+                (hasAutomaticFailureToday || _state.NextAutomaticSyncAtUtc.Value <= expectedDue))
+            {
+                return;
+            }
+            _state.NextAutomaticSyncAtUtc = expectedDue;
+        }
+        else if (!_state.NextAutomaticSyncAtUtc.HasValue)
+        {
+            _state.NextAutomaticSyncAtUtc = now + GetDeterministicJitter(now.Date);
         }
         else
         {
-            _state.NextAutomaticSyncAtUtc = now + GetDeterministicJitter(now.Date);
+            return;
         }
         _stateStore.Save(_state);
     }
@@ -2491,8 +2512,7 @@ public sealed class SyncCoordinator : IDisposable
             return;
         }
         var lastSuccess = _state.LastSuccessfulSyncAtUtc ?? DateTime.UtcNow;
-        var baseDue = lastSuccess + SyncProtocol.AutomaticSyncInterval;
-        _state.NextAutomaticSyncAtUtc = baseDue + GetDeterministicJitter(baseDue);
+        _state.NextAutomaticSyncAtUtc = lastSuccess + SyncProtocol.AutomaticSyncInterval;
         ScheduleAutomaticTimerLocked(DateTime.UtcNow);
     }
 

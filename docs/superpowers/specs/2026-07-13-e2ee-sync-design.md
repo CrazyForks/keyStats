@@ -135,10 +135,12 @@ remain available. If another device is revoked between syncs, the Worker returns
 server-authoritative count and stop the timer instead of retrying every hour.
 
 With two or more devices, manual sync becomes available one hour after the last
-success. After 24 hours without success, an automatic attempt is scheduled with
-0-60 minutes of jitter. Automatic failures retry after one hour and then six
-hours, with no more than three failed retries per UTC day. A manual transport
-failure has a 60-second local cooldown and HTTP 429 always uses `Retry-After`.
+success. On the first launch of each local calendar day, the client prioritizes
+an automatic attempt when the device has not already synced that day. After a
+successful sync, the next automatic attempt is scheduled 12 hours later.
+Automatic failures retry after one hour and then six hours, with no more than
+three failed retries per UTC day. A manual transport failure has a 60-second
+local cooldown and HTTP 429 always uses `Retry-After`.
 
 The app does not wake in the background after exit. It evaluates due work on
 launch, resume, and activation. Any credential, decryption, or cache failure

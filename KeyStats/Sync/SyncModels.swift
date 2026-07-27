@@ -9,7 +9,8 @@ enum SyncConstants {
 #else
     static let enforcesSuccessfulSyncRateLimits = true
 #endif
-    static let automaticSyncInterval: TimeInterval = 24 * 60 * 60
+    static let automaticSyncInterval: TimeInterval = 12 * 60 * 60
+    static let stateRefreshInterval: TimeInterval = 24 * 60 * 60
     static let maximumSuccessfulSyncsPerUTCDay = 8
     static let maximumAutomaticFailuresPerUTCDay = 3
     static let maximumSnapshotBytes = 64 * 1024
@@ -483,6 +484,24 @@ enum SyncAvailability: Equatable {
 }
 
 enum SyncSchedulePolicy {
+    static func shouldPrioritizeDailyLaunchSync(
+        state: SyncPersistentState,
+        now: Date = Date(),
+        calendar: Calendar = .autoupdatingCurrent
+    ) -> Bool {
+        guard state.isConfigured,
+              !state.needsRepair,
+              !state.needsBootstrap,
+              state.pendingProvisioning == nil,
+              !state.pendingVaultDeletion,
+              state.activeDeviceCount >= 2,
+              automaticFailureCount(state: state, now: now) == 0 else {
+            return false
+        }
+        guard let last = state.lastSuccessfulSyncAt else { return true }
+        return !calendar.isDate(last, inSameDayAs: now)
+    }
+
     static func availability(
         state: SyncPersistentState,
         now: Date = Date(),
