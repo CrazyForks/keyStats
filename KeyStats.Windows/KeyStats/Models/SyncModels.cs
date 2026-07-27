@@ -18,7 +18,7 @@ public static class SyncProtocol
     public const int MaximumHistoryPagesPerAttempt = 256;
     public const int MaximumAutomaticFailuresPerUtcDay = 3;
     public static readonly TimeSpan ManualSyncInterval = TimeSpan.FromHours(1);
-    public static readonly TimeSpan AutomaticSyncInterval = TimeSpan.FromHours(12);
+    public static readonly TimeSpan AutomaticSyncInterval = TimeSpan.FromHours(8);
 }
 
 public static class SyncSchedulePolicy

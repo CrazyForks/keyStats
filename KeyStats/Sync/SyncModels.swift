@@ -9,7 +9,7 @@ enum SyncConstants {
 #else
     static let enforcesSuccessfulSyncRateLimits = true
 #endif
-    static let automaticSyncInterval: TimeInterval = 12 * 60 * 60
+    static let automaticSyncInterval: TimeInterval = 8 * 60 * 60
     static let stateRefreshInterval: TimeInterval = 24 * 60 * 60
     static let maximumSuccessfulSyncsPerUTCDay = 8
     static let maximumAutomaticFailuresPerUTCDay = 3

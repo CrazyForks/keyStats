@@ -274,7 +274,7 @@ final class SyncCoreTests: XCTestCase {
         XCTAssertEqual(SyncSchedulePolicy.availability(state: state, enforcesRateLimits: true), .dailyLimit)
     }
 
-    func testHourlyManualAndTwelveHourAutomaticSchedulePolicy() {
+    func testHourlyManualAndEightHourAutomaticSchedulePolicy() {
         let now = Date(timeIntervalSince1970: 1_783_944_000)
         var state = SyncPersistentState.fresh(serverBaseURL: "https://sync.example.workers.dev")
         state.vaultId = "vault"
@@ -298,13 +298,13 @@ final class SyncCoreTests: XCTestCase {
             enforcesRateLimits: true
         ), .available)
 
-        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(12 * 60 * 60 - 1))
+        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(8 * 60 * 60 - 1))
         XCTAssertFalse(SyncSchedulePolicy.shouldScheduleAutomaticSync(
             state: state,
             now: now,
             enforcesRateLimits: true
         ))
-        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(12 * 60 * 60))
+        state.lastSuccessfulSyncAt = now.addingTimeInterval(-(8 * 60 * 60))
         XCTAssertTrue(SyncSchedulePolicy.shouldScheduleAutomaticSync(
             state: state,
             now: now,

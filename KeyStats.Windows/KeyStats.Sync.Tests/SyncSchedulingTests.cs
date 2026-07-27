@@ -96,7 +96,7 @@ public sealed class SyncSchedulingTests
     }
 
     [TestMethod]
-    public void AutomaticSchedule_UsesTwelveHourInterval()
+    public void AutomaticSchedule_UsesEightHourInterval()
     {
         TestPlatform.RequireWindows();
         using var directory = new TestDirectory();
@@ -130,7 +130,7 @@ public sealed class SyncSchedulingTests
 
         var dueAt = stateStore.Load().NextAutomaticSyncAtUtc;
         Assert.IsTrue(dueAt.HasValue);
-        Assert.AreEqual(now.AddHours(12), dueAt.Value);
+        Assert.AreEqual(now.AddHours(8), dueAt.Value);
     }
 
     [TestMethod]

@@ -137,7 +137,7 @@ server-authoritative count and stop the timer instead of retrying every hour.
 With two or more devices, manual sync becomes available one hour after the last
 success. On the first launch of each local calendar day, the client prioritizes
 an automatic attempt when the device has not already synced that day. After a
-successful sync, the next automatic attempt is scheduled 12 hours later.
+successful sync, the next automatic attempt is scheduled 8 hours later.
 Automatic failures retry after one hour and then six hours, with no more than
 three failed retries per UTC day. A manual transport failure has a 60-second
 local cooldown and HTTP 429 always uses `Retry-After`.
