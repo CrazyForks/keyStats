@@ -773,7 +773,7 @@ class StatsPopoverViewController: NSViewController {
         } else if currentStyle != lastChartStyleSegment {
             direction = currentStyle > lastChartStyleSegment ? .right : .left
         } else {
-            direction = .right
+            return
         }
         if currentRange != lastRangeSegment {
             AppDelegate.trackClick("chart_range", properties: [
